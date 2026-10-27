@@ -104,7 +104,6 @@ jobs:
             --continueOnError \
             --configurationPath=/Users/Shared/yepgram-configuration.json \
             --codesigningInformationPath=build-system/fake-codesigning \
-            --disableProvisioningProfiles \
             --configuration=release_arm64 \
             --buildNumber=${{ github.run_number }} \
             --outputBuildArtifactsPath=/Users/Shared/artifacts
