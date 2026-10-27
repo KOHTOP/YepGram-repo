@@ -49,6 +49,12 @@ jobs:
           sudo xcode-select -s "$XCODE/Contents/Developer"
           xcodebuild -version
 
+      - name: Install Metal Toolchain
+        run: |
+          # Since Xcode 26 the Metal compiler is a separate download; the shaders fail without it.
+          sudo xcodebuild -downloadComponent MetalToolchain
+          xcrun metal --version
+
       - name: Clone Swiftgram with submodules
         run: |
           # Source paths end up in the binary, so build from a stable location.
