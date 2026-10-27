@@ -87,20 +87,20 @@ def replace_icon(root):
         print('replaced', badge)
 
 
-def lime_theme(root):
+def grey_theme(root):
     path = 'submodules/TelegramUIPreferences/Sources/PresentationThemeSettings.swift'
     replace(root, path,
         'public enum PresentationThemeBaseColor: Int32, CaseIterable {',
         '''// YepGram palette.
-public let yepGramNightAccentColor: UInt32 = 0xa4e04a
+public let yepGramNightAccentColor: UInt32 = 0xc9ccdc
 public let yepGramNightOutgoingBubbleColor: UInt32 = 0x3a3a3e
-public let yepGramDayAccentColor: UInt32 = 0x5fae1e
+public let yepGramDayAccentColor: UInt32 = 0x5b5e70
 public let yepGramDayOutgoingBubbleColor: UInt32 = 0xe3e3e8
 
 public enum PresentationThemeBaseColor: Int32, CaseIterable {''')
     replace(root, path,
         '        return PresentationThemeSettings(theme: .builtin(.dayClassic), themePreferredBaseTheme: [:], themeSpecificAccentColors: [:], themeSpecificChatWallpapers: [:],',
-        '''        // YepGram: dark grey night theme with a lime accent by default; the day theme gets the same accent.
+        '''        // YepGram: dark grey night theme with a grey accent by default; the day theme gets a darker grey one.
         let nightAccent = PresentationThemeAccentColor(index: 120, baseColor: .preset, accentColor: yepGramNightAccentColor, bubbleColors: [yepGramNightOutgoingBubbleColor], wallpaper: nil)
         let dayAccent = PresentationThemeAccentColor(index: 121, baseColor: .preset, accentColor: yepGramDayAccentColor, bubbleColors: [yepGramDayOutgoingBubbleColor], wallpaper: nil)
         let themeSpecificAccentColors: [Int64: PresentationThemeAccentColor] = [
@@ -125,7 +125,7 @@ public enum PresentationThemeBaseColor: Int32, CaseIterable {''')
 
     replace(root, 'submodules/TelegramPresentationData/Sources/DefaultDayPresentationTheme.swift',
         'public let defaultDayAccentColor = UIColor(rgb: 0x0088ff)\n',
-        'public let defaultDayAccentColor = UIColor(rgb: 0x5fae1e) // YepGram lime\n')
+        'public let defaultDayAccentColor = UIColor(rgb: 0x5b5e70) // YepGram grey\n')
 
 
 def keep_deleted_messages(root):
@@ -456,18 +456,114 @@ def ghost_mode(root):
 
 def yepgram_settings_ui(root):
     path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
-    replace(root, path, '    case search\n    case trending\n', '    case search\n    case yepGhost\n    case yepDeleted\n    case trending\n')
-    replace(root, path, '    case accountColors\n    case other\n}', '    case accountColors\n    case other\n    case yepSupport\n}')
+    replace(root, path, '    case search\n    case trending\n',
+        '    case search\n    case yepCategories\n    case yepLinks\n    case yepGhost\n    case yepDeleted\n    case yepAccount\n    case trending\n')
     replace(root, path, '    case hideAccountInNotifications\n}',
-        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n}')
-    replace(root, path, '    case contentSettings\n    case languageSettings\n}', '    case contentSettings\n    case languageSettings\n    case yepSupport\n}')
+        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n    case yepAccountInAppNotifications\n}')
+    replace(root, path, '    case contentSettings\n    case languageSettings\n}',
+        '    case contentSettings\n    case languageSettings\n'
+        '    case yepCategoryYepGram\n    case yepCategoryAccounts\n    case yepCategoryTools\n    case yepCategoryGeneral\n'
+        '    case yepCategoryAppearance\n    case yepCategoryChats\n    case yepCategoryOther\n    case yepChannel\n    case yepSource\n}')
 
-    replace(root, path, 'private func SGControllerEntries(',
-        '// YepGram strings: Russian for a Russian interface, English otherwise.\n'
-        'private func yepGramText(_ lang: String, _ ru: String, _ en: String) -> String {\n'
-        '    return lang == "ru" ? ru : en\n'
-        '}\n\n'
-        'private func SGControllerEntries(')
+    replace(root, path, 'private func SGControllerEntries(presentationData: PresentationData, callListSettings: CallListSettings, experimentalUISettings: ExperimentalUISettings, appConfiguration: AppConfiguration, nameColors: PeerNameColors, state: SGSettingsControllerState) -> [SGControllerEntry] {\n',
+        '''// YepGram strings: Russian for a Russian interface, English otherwise.
+private func yepGramText(_ lang: String, _ ru: String, _ en: String) -> String {
+    return lang == "ru" ? ru : en
+}
+
+// YepGram: settings are split into categories; the root lists them, each category opens its own screen.
+private enum YepGramSettingsCategory: CaseIterable {
+    case yepGram
+    case accounts
+    case general
+    case appearance
+    case chats
+    case other
+
+    func title(_ lang: String) -> String {
+        switch self {
+        case .yepGram:
+            return "YepGram"
+        case .accounts:
+            return yepGramText(lang, "Аккаунты", "Accounts")
+        case .general:
+            return yepGramText(lang, "Основные", "General")
+        case .appearance:
+            return yepGramText(lang, "Оформление", "Appearance")
+        case .chats:
+            return yepGramText(lang, "Чаты", "Chats")
+        case .other:
+            return yepGramText(lang, "Другое", "Other")
+        }
+    }
+
+    var sections: [SGControllerSection] {
+        switch self {
+        case .yepGram:
+            return [.yepGhost, .yepDeleted]
+        case .accounts:
+            return [.yepAccount]
+        case .general:
+            return [.tabs, .folders, .chatList, .profiles, .stories]
+        case .appearance:
+            return [.trending, .stickers, .accountColors]
+        case .chats:
+            return [.translation, .voiceMessages, .calls, .photo, .videoNotes, .contextMenu]
+        case .other:
+            return [.content, .other]
+        }
+    }
+
+    var link: SGDisclosureLink {
+        switch self {
+        case .yepGram:
+            return .yepCategoryYepGram
+        case .accounts:
+            return .yepCategoryAccounts
+        case .general:
+            return .yepCategoryGeneral
+        case .appearance:
+            return .yepCategoryAppearance
+        case .chats:
+            return .yepCategoryChats
+        case .other:
+            return .yepCategoryOther
+        }
+    }
+}
+
+// A category shows its own sections; the root shows the search field, the categories and the links,
+// or every matching setting while a search query is typed.
+private func yepGramFilterEntries(entries: [SGControllerEntry], category: YepGramSettingsCategory?, searchQuery: String?, lang: String) -> [SGControllerEntry] {
+    if let category {
+        let sections = Set(category.sections.map { $0.rawValue })
+        return entries.filter { sections.contains($0.section) }
+    }
+    if let searchQuery, !searchQuery.isEmpty {
+        return filterSGItemListUIEntrires(entries: entries, by: searchQuery)
+    }
+    var result = entries.filter { $0.section == SGControllerSection.search.rawValue }
+    var id = 1_000_000
+    result.append(.header(id: id, section: .yepCategories, text: yepGramText(lang, "КАТЕГОРИИ", "CATEGORIES"), badge: nil))
+    for category in YepGramSettingsCategory.allCases {
+        id += 1
+        result.append(.disclosure(id: id, section: .yepCategories, link: category.link, text: category.title(lang)))
+        if category == .accounts {
+            id += 1
+            result.append(.disclosure(id: id, section: .yepCategories, link: .yepCategoryTools, text: yepGramText(lang, "Инструменты", "Tools")))
+        }
+    }
+    id += 1
+    result.append(.header(id: id, section: .yepLinks, text: yepGramText(lang, "ССЫЛКИ", "LINKS"), badge: nil))
+    id += 1
+    result.append(.disclosure(id: id, section: .yepLinks, link: .yepChannel, text: yepGramText(lang, "Канал @yepgramoff", "Channel @yepgramoff")))
+    id += 1
+    result.append(.disclosure(id: id, section: .yepLinks, link: .yepSource, text: yepGramText(lang, "Исходный код", "Source code")))
+    return result
+}
+
+private func SGControllerEntries(presentationData: PresentationData, callListSettings: CallListSettings, experimentalUISettings: ExperimentalUISettings, appConfiguration: AppConfiguration, nameColors: PeerNameColors, state: SGSettingsControllerState, category: YepGramSettingsCategory?, accountId: Int64) -> [SGControllerEntry] {
+''')
 
     search = '    entries.append(.searchInput(id: id.count, section: .search, title: NSAttributedString(string: "🔍"), text: state.searchQuery ?? "", placeholder: strings.Common_Search))\n'
     replace(root, path, search, search +
@@ -480,14 +576,26 @@ def yepgram_settings_ui(root):
         '    \n'
         '    entries.append(.header(id: id.count, section: .yepDeleted, text: yepGramText(lang, "УДАЛЁННЫЕ СООБЩЕНИЯ", "DELETED MESSAGES"), badge: nil))\n'
         '    entries.append(.toggle(id: id.count, section: .yepDeleted, settingName: .yepKeepDeletedMessages, value: YepGramSettings.keepDeletedMessages, text: yepGramText(lang, "Сохранять удалённые сообщения", "Keep deleted messages"), enabled: true))\n'
-        '    entries.append(.notice(id: id.count, section: .yepDeleted, text: yepGramText(lang, "Сообщения, которые удалил собеседник, остаются в чате полупрозрачными и с корзиной у времени.", "Messages others delete stay in the chat, faded, with a trash mark next to the time.")))\n')
+        '    entries.append(.notice(id: id.count, section: .yepDeleted, text: yepGramText(lang, "Сообщения, которые удалил собеседник, остаются в чате полупрозрачными и с корзиной у времени.", "Messages others delete stay in the chat, faded, with a trash mark next to the time.")))\n'
+        '    \n'
+        '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "ЭТОТ АККАУНТ", "THIS ACCOUNT"), badge: nil))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepAccount, settingName: .yepAccountInAppNotifications, value: !YepGramSettings.isInAppNotificationsMuted(accountId: accountId), text: yepGramText(lang, "Уведомления в приложении", "In-app notifications"), enabled: true))\n'
+        '    entries.append(.notice(id: id.count, section: .yepAccount, text: yepGramText(lang, "Баннеры о новых сообщениях, пока YepGram открыт. У каждого аккаунта настройка своя: чтобы поменять её для другого, переключитесь на него.", "Banners for new messages while YepGram is open. Each account has its own setting: switch to another account to change it there.")))\n')
 
-    end = '    return filterSGItemListUIEntrires(entries: entries, by: state.searchQuery)\n'
-    replace(root, path, end,
-        '    entries.append(.header(id: id.count, section: .yepSupport, text: yepGramText(lang, "ПОДДЕРЖКА ПРОЕКТА", "SUPPORT THE PROJECT"), badge: nil))\n'
-        '    entries.append(.disclosure(id: id.count, section: .yepSupport, link: .yepSupport, text: yepGramText(lang, "Поддержать YepGram", "Support YepGram")))\n'
-        '    entries.append(.notice(id: id.count, section: .yepSupport, text: yepGramText(lang, "Новости, исходный код и способы помочь проекту.", "News, source code and ways to help the project.")))\n'
-        '    \n' + end)
+    # Account-wide switches that already exist move into the Accounts category.
+    replace(root, path, 'section: .other, settingName: .hidePhoneInSettings,', 'section: .yepAccount, settingName: .hidePhoneInSettings,')
+    replace(root, path, 'entries.append(.notice(id: id.count, section: .other, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))',
+        'entries.append(.notice(id: id.count, section: .yepAccount, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))')
+    replace(root, path, 'section: .other, settingName: .hideAccountInNotifications,', 'section: .yepAccount, settingName: .hideAccountInNotifications,')
+
+    replace(root, path, '    return filterSGItemListUIEntrires(entries: entries, by: state.searchQuery)\n',
+        '    return yepGramFilterEntries(entries: entries, category: category, searchQuery: state.searchQuery, lang: lang)\n')
+
+    replace(root, path, 'public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int? = nil*/) -> ViewController {\n',
+        'public func sgSettingsController(context: AccountContext/*, focusOnItemTag: Int? = nil*/) -> ViewController {\n'
+        '    return yepGramSettingsController(context: context, category: nil)\n'
+        '}\n\n'
+        'private func yepGramSettingsController(context: AccountContext, category: YepGramSettingsCategory?) -> ViewController {\n')
 
     toggles = ('        case .hideAccountInNotifications:\n'
                '            SGSimpleSettings.shared.hideAccountInNotifications = value\n'
@@ -504,13 +612,142 @@ def yepgram_settings_ui(root):
         '            simplePromise.set(true)\n'
         '        case .yepKeepDeletedMessages:\n'
         '            YepGramSettings.keepDeletedMessages = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepAccountInAppNotifications:\n'
+        '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n'
         '            simplePromise.set(true)\n')
 
     links = ('            case .languageSettings:\n'
              '                pushControllerImpl?(context.sharedContext.makeLocalizationListController(context: context))\n')
     replace(root, path, links, links +
-        '            case .yepSupport:\n'
-        '                context.sharedContext.applicationBindings.openUrl(YepGramSettings.supportUrl)\n')
+        '            case .yepCategoryYepGram:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .yepGram))\n'
+        '            case .yepCategoryAccounts:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .accounts))\n'
+        '            case .yepCategoryTools:\n'
+        '                pushControllerImpl?(context.sharedContext.makeSGProController(context: context))\n'
+        '            case .yepCategoryGeneral:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .general))\n'
+        '            case .yepCategoryAppearance:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .appearance))\n'
+        '            case .yepCategoryChats:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .chats))\n'
+        '            case .yepCategoryOther:\n'
+        '                pushControllerImpl?(yepGramSettingsController(context: context, category: .other))\n'
+        '            case .yepChannel:\n'
+        '                context.sharedContext.applicationBindings.openUrl(YepGramSettings.channelUrl)\n'
+        '            case .yepSource:\n'
+        '                context.sharedContext.applicationBindings.openUrl(YepGramSettings.sourceUrl)\n')
+
+    replace(root, path,
+        '        let entries = SGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state)\n',
+        '        let entries = SGControllerEntries(presentationData: presentationData, callListSettings: callListSettings, experimentalUISettings: experimentalUISettings, appConfiguration: appConfiguration, nameColors: PeerNameColors.with(availableReplyColors: availableReplyColors, availableProfileColors: availableProfileColors), state: state, category: category, accountId: context.account.peerId.id._internalGetInt64Value())\n')
+    replace(root, path, 'title: .text("YepGram"), leftNavigationButton: nil',
+        'title: .text(category?.title(presentationData.strings.baseLanguageCode) ?? "YepGram"), leftNavigationButton: nil')
+
+
+def unlock_swiftgram_pro_features(root):
+    # Swiftgram's paid features run on the device; YepGram treats every install as entitled.
+    path = 'Swiftgram/SGStatus/Sources/SGStatus.swift'
+    replace(root, path, '        return SGStatus(status: 1)\n', '        return SGStatus(status: 2)\n')
+    replace(root, path, '    public init(status: Int64) {\n        self.status = status\n    }',
+        '    public init(status: Int64) {\n        // YepGram: Swiftgram Pro features are free.\n        self.status = max(status, 2)\n    }')
+    replace(root, path, '        self.status = try container.decodeIfPresent(Int64.self, forKey: "status") ?? 1\n',
+        '        let decodedStatus = try container.decodeIfPresent(Int64.self, forKey: "status") ?? 2\n'
+        '        self.status = max(decodedStatus, 2)\n')
+    replace(root, 'Swiftgram/SGSimpleSettings/Sources/SimpleSettings.swift', '        Keys.status.rawValue: 1,\n', '        Keys.status.rawValue: 2,\n')
+
+    # The former Pro screen becomes "Tools", without Swiftgram's icons and badges.
+    path = 'Swiftgram/SGProUI/Sources/SGProUI.swift'
+    replace(root, path,
+        '    entries.append(.header(id: id.count, section: .appearance, text: presentationData.strings.Appearance_Title.uppercased(), badge: nil))\n'
+        '    entries.append(.disclosure(id: id.count, section: .appearance, link: .appIcons, text: presentationData.strings.Appearance_AppIcon))\n'
+        '    entries.append(.disclosure(id: id.count, section: .appearance, link: .appBages, text: "AppBadge.Title".i18n(lang)))\n'
+        '    entries.append(.notice(id: id.count, section: .appearance, text: "AppBadge.Notice".i18n(lang)))\n', '')
+    replace(root, path, 'title: .text("Swiftgram Pro")',
+        'title: .text(presentationData.strings.baseLanguageCode == "ru" ? "Инструменты" : "Tools")')
+
+
+def per_account_in_app_notifications(root):
+    path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
+    replace(root, path, 'import SGStrings\n', 'import SGStrings\nimport SGSimpleSettings\n')
+    anchor = ('        |> deliverOn(Queue.mainQueue())).start(next: { [weak self] messageList in\n'
+              '            if messageList.isEmpty {\n'
+              '                return\n'
+              '            }\n')
+    replace(root, path, anchor, anchor +
+        '            // YepGram: in-app banners can be switched off for one account.\n'
+        '            if let strongSelf = self, YepGramSettings.isInAppNotificationsMuted(accountId: strongSelf.context.account.peerId.id._internalGetInt64Value()) {\n'
+        '                return\n'
+        '            }\n')
+
+
+def intro_logo(root):
+    folder = os.path.join(root, 'Telegram/Telegram-iOS/Resources/intro')
+    if not os.path.isdir(folder):
+        failures.append('intro textures not found at {}'.format(folder))
+        return
+    # The intro draws the plane over the sphere; YepGram's sphere is the whole icon and the plane is empty.
+    shutil.copyfile(os.path.join(FILES_DIR, 'intro_telegram_sphere@2x.png'), os.path.join(folder, 'telegram_sphere@2x.png'))
+    shutil.copyfile(os.path.join(FILES_DIR, 'intro_telegram_plane1@2x.png'), os.path.join(folder, 'telegram_plane1@2x.png'))
+    print('replaced intro logo')
+
+def edit_history(root):
+    shutil.copyfile(os.path.join(FILES_DIR, 'SyncCore_YepGramEditHistoryAttribute.swift'),
+                    os.path.join(root, 'submodules/TelegramCore/Sources/SyncCore/SyncCore_YepGramEditHistoryAttribute.swift'))
+    print('added SyncCore_YepGramEditHistoryAttribute.swift')
+
+    registered = '    declareEncodable(YepGramDeletedMessageAttribute.self, f: { YepGramDeletedMessageAttribute(decoder: $0) })\n'
+    replace(root, 'submodules/TelegramCore/Sources/Account/AccountManager.swift', registered,
+        registered + '    declareEncodable(YepGramEditHistoryAttribute.self, f: { YepGramEditHistoryAttribute(decoder: $0) })\n')
+
+    replace(root, 'submodules/TelegramCore/Sources/State/AccountStateManagementUtils.swift',
+        '                    return .update(mergedServerMessageUpdate(previous: previousMessage, updated: message))\n',
+        '                    // YepGram: keep the text an edit replaces.\n'
+        '                    return .update(_internal_yepGramWithEditHistory(previous: previousMessage, updated: mergedServerMessageUpdate(previous: previousMessage, updated: message)))\n')
+
+    path = 'submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift'
+    json_action = ('        if SGSimpleSettings.shared.contextShowJson {\n'
+                   '            actions.append(showJsonAction)\n'
+                   '        } else {\n'
+                   '            sgActions.append(showJsonAction)\n'
+                   '        }\n')
+    replace(root, path, json_action, json_action +
+        '        // YepGram: the earlier texts of an edited message.\n'
+        '        if let editHistory = message.attributes.first(where: { $0 is YepGramEditHistoryAttribute }) as? YepGramEditHistoryAttribute, !editHistory.texts.isEmpty {\n'
+        '            let isRussian = chatPresentationInterfaceState.strings.baseLanguageCode == "ru"\n'
+        '            let historyTitle = isRussian ? "История изменений" : "Edit history"\n'
+        '            actions.append(.action(ContextMenuActionItem(text: historyTitle, icon: { theme in\n'
+        '                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Edit"), color: theme.actionSheet.primaryTextColor)\n'
+        '            }, action: { c, _ in\n'
+        '                c?.dismiss(completion: {\n'
+        '                    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n'
+        '                    let formatter = DateFormatter()\n'
+        '                    formatter.dateStyle = .short\n'
+        '                    formatter.timeStyle = .short\n'
+        '                    var versions: [String] = []\n'
+        '                    for (index, text) in editHistory.texts.enumerated().reversed() {\n'
+        '                        let date = index < editHistory.dates.count ? editHistory.dates[index] : 0\n'
+        '                        versions.append(formatter.string(from: Date(timeIntervalSince1970: Double(date))) + "\\n" + text)\n'
+        '                    }\n'
+        '                    controllerInteraction.presentController(textAlertController(context: context, title: historyTitle, text: versions.joined(separator: "\\n\\n"), actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), nil)\n'
+        '                })\n'
+        '            })))\n'
+        '        }\n')
+
+    path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
+    replace(root, path, '    case yepAccountInAppNotifications\n}', '    case yepAccountInAppNotifications\n    case yepKeepEditHistory\n}')
+    deleted_notice = ('    entries.append(.notice(id: id.count, section: .yepDeleted, text: yepGramText(lang, "Сообщения, которые удалил собеседник, остаются в чате полупрозрачными и с корзиной у времени.", "Messages others delete stay in the chat, faded, with a trash mark next to the time.")))\n')
+    replace(root, path, deleted_notice, deleted_notice +
+        '    entries.append(.toggle(id: id.count, section: .yepDeleted, settingName: .yepKeepEditHistory, value: YepGramSettings.keepEditHistory, text: yepGramText(lang, "Сохранять историю изменений", "Keep edit history"), enabled: true))\n'
+        '    entries.append(.notice(id: id.count, section: .yepDeleted, text: yepGramText(lang, "Прошлые версии изменённых сообщений: удержите сообщение и выберите «История изменений».", "Earlier versions of edited messages: long-press a message and choose Edit history.")))\n')
+    toggle = ('        case .yepAccountInAppNotifications:\n'
+              '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n'
+              '            simplePromise.set(true)\n')
+    replace(root, path, toggle, toggle +
+        '        case .yepKeepEditHistory:\n'
+        '            YepGramSettings.keepEditHistory = value\n'
+        '            simplePromise.set(true)\n')
 
 
 def main():
@@ -520,7 +757,7 @@ def main():
     root = os.path.abspath(sys.argv[1])
     rename_app(root)
     replace_icon(root)
-    lime_theme(root)
+    grey_theme(root)
     keep_deleted_messages(root)
     deleted_mark_in_chat(root)
     sideload_app_group(root)
@@ -529,6 +766,10 @@ def main():
     remove_swiftgram_pro(root)
     ghost_mode(root)
     yepgram_settings_ui(root)
+    unlock_swiftgram_pro_features(root)
+    per_account_in_app_notifications(root)
+    intro_logo(root)
+    edit_history(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:

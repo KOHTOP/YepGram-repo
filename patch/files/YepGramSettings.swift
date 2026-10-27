@@ -41,7 +41,34 @@ public enum YepGramSettings {
         set { YepGramSettings.store(.keepDeletedMessages, newValue) }
     }
 
-    public static var supportUrl: String {
+    /// Edited messages keep their earlier texts, viewable from the message menu.
+    public static var keepEditHistory: Bool {
+        get { return UserDefaults.standard.object(forKey: "yepgram.keepEditHistory") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "yepgram.keepEditHistory") }
+    }
+
+    private static let mutedInAppAccountsKey = "yepgram.mutedInAppAccounts"
+
+    /// In-app banners for new messages, switched off for one account only.
+    public static func isInAppNotificationsMuted(accountId: Int64) -> Bool {
+        let ids = UserDefaults.standard.array(forKey: YepGramSettings.mutedInAppAccountsKey) as? [String] ?? []
+        return ids.contains(String(accountId))
+    }
+
+    public static func setInAppNotificationsMuted(_ muted: Bool, accountId: Int64) {
+        var ids = UserDefaults.standard.array(forKey: YepGramSettings.mutedInAppAccountsKey) as? [String] ?? []
+        ids.removeAll(where: { $0 == String(accountId) })
+        if muted {
+            ids.append(String(accountId))
+        }
+        UserDefaults.standard.set(ids, forKey: YepGramSettings.mutedInAppAccountsKey)
+    }
+
+    public static var channelUrl: String {
+        return "https://t.me/yepgramoff"
+    }
+
+    public static var sourceUrl: String {
         return "https://github.com/KOHTOP/YepGram-repo"
     }
 }
