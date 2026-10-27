@@ -435,23 +435,23 @@ def ghost_mode(root):
     header = 'private func pushPeerReadState(network: Network, postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, readState: PeerReadState) -> Signal<PeerReadState, PeerReadStateValidationError> {\n'
     replace(root, state + 'SynchronizePeerReadState.swift', header,
         header + '    // YepGram ghost mode: the read mark stays local, so the sender is never told.\n'
-        '    if YepGramSettings.ghostNoReadReceipts {\n        return .single(readState)\n    }\n')
+        '    if YepGramSettings.ghost(.noReadReceipts, accountId: stateManager.accountPeerId.id._internalGetInt64Value()) {\n        return .single(readState)\n    }\n')
 
     header = 'private func synchronizeConsumeMessageContents(transaction: Transaction, network: Network, stateManager: AccountStateManager, peerId: PeerId, operation: SynchronizeConsumeMessageContentsOperation) -> Signal<Void, NoError> {\n'
     replace(root, state + 'ManagedSynchronizeConsumeMessageContentsOperations.swift', header,
         header + '    // YepGram ghost mode: "listened"/"watched" is a read receipt too.\n'
-        '    if YepGramSettings.ghostNoReadReceipts {\n        return .complete()\n    }\n')
+        '    if YepGramSettings.ghost(.noReadReceipts, accountId: stateManager.accountPeerId.id._internalGetInt64Value()) {\n        return .complete()\n    }\n')
 
     replace(root, state + 'ManagedAccountPresence.swift',
         '    private func updatePresence(_ isOnline: Bool) {\n',
         '    private func updatePresence(_ requestedOnline: Bool) {\n'
         '        // YepGram ghost mode: always report offline. Read on every refresh, so toggling applies at the next one.\n'
-        '        let isOnline = requestedOnline && !YepGramSettings.ghostHideOnline\n')
+        '        let isOnline = requestedOnline && !YepGramSettings.ghost(.hideOnline, accountId: self.accountPeerId.id._internalGetInt64Value())\n')
 
     header = 'private func requestActivity(postbox: Postbox, network: Network, accountPeerId: PeerId, peerId: PeerId, threadId: Int64?, activity: PeerInputActivity?) -> Signal<Void, NoError> {\n'
     replace(root, state + 'ManagedLocalInputActivities.swift', header,
         header + '    // YepGram ghost mode: no "typing…" and similar activity.\n'
-        '    if YepGramSettings.ghostNoTyping {\n        return .complete()\n    }\n')
+        '    if YepGramSettings.ghost(.noTyping, accountId: accountPeerId.id._internalGetInt64Value()) {\n        return .complete()\n    }\n')
 
 
 def yepgram_settings_ui(root):
@@ -569,9 +569,9 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
     replace(root, path, search, search +
         '    \n'
         '    entries.append(.header(id: id.count, section: .yepGhost, text: yepGramText(lang, "РЕЖИМ ПРИЗРАКА", "GHOST MODE"), badge: nil))\n'
-        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostNoReadReceipts, value: YepGramSettings.ghostNoReadReceipts, text: yepGramText(lang, "Не отправлять «прочитано»", "Don\'t send read receipts"), enabled: true))\n'
-        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostHideOnline, value: YepGramSettings.ghostHideOnline, text: yepGramText(lang, "Не показывать «в сети»", "Hide online status"), enabled: true))\n'
-        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostNoTyping, value: YepGramSettings.ghostNoTyping, text: yepGramText(lang, "Не отправлять «печатает…»", "Don\'t send typing status"), enabled: true))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostNoReadReceipts, value: YepGramSettings.ghost(.noReadReceipts, accountId: accountId), text: yepGramText(lang, "Не отправлять «прочитано»", "Don\'t send read receipts"), enabled: true))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostHideOnline, value: YepGramSettings.ghost(.hideOnline, accountId: accountId), text: yepGramText(lang, "Не показывать «в сети»", "Hide online status"), enabled: true))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostNoTyping, value: YepGramSettings.ghost(.noTyping, accountId: accountId), text: yepGramText(lang, "Не отправлять «печатает…»", "Don\'t send typing status"), enabled: true))\n'
         '    entries.append(.notice(id: id.count, section: .yepGhost, text: yepGramText(lang, "Собеседники не увидят, что вы прочитали их сообщения, прослушали голосовые, были в сети или печатаете. Если вы сами напишете в чат, Telegram отметит его прочитанным.", "Others won\'t see that you read their messages, played voice messages, were online or are typing. Sending a message to a chat still marks it read.")))\n'
         '    \n'
         '    entries.append(.header(id: id.count, section: .yepDeleted, text: yepGramText(lang, "УДАЛЁННЫЕ СООБЩЕНИЯ", "DELETED MESSAGES"), badge: nil))\n'
@@ -602,13 +602,13 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
                '            SGSimpleSettings.shared.synchronizeShared()\n')
     replace(root, path, toggles, toggles +
         '        case .yepGhostNoReadReceipts:\n'
-        '            YepGramSettings.ghostNoReadReceipts = value\n'
+        '            YepGramSettings.setGhost(.noReadReceipts, accountId: yepGramTargetAccountId, value)\n'
         '            simplePromise.set(true)\n'
         '        case .yepGhostHideOnline:\n'
-        '            YepGramSettings.ghostHideOnline = value\n'
+        '            YepGramSettings.setGhost(.hideOnline, accountId: yepGramTargetAccountId, value)\n'
         '            simplePromise.set(true)\n'
         '        case .yepGhostNoTyping:\n'
-        '            YepGramSettings.ghostNoTyping = value\n'
+        '            YepGramSettings.setGhost(.noTyping, accountId: yepGramTargetAccountId, value)\n'
         '            simplePromise.set(true)\n'
         '        case .yepKeepDeletedMessages:\n'
         '            YepGramSettings.keepDeletedMessages = value\n'
@@ -750,6 +750,359 @@ def edit_history(root):
         '            simplePromise.set(true)\n')
 
 
+
+def ghost_extras(root):
+    shutil.copyfile(os.path.join(FILES_DIR, 'YepGramGhost.swift'), os.path.join(root, 'submodules/TelegramCore/Sources/State/YepGramGhost.swift'))
+    print('added YepGramGhost.swift')
+
+    # Read after action: sending, reacting and voting.
+    header = 'public func enqueueMessages(account: Account, peerId: PeerId, messages: [EnqueueMessage]) -> Signal<[MessageId?], NoError> {\n'
+    replace(root, 'submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift', header,
+        header + '    _internal_yepGramReadAfterAction(account: account, peerId: peerId)\n')
+    header = 'public func updateMessageReactionsInteractively(account: Account, messageIds: [MessageId], reactions: [UpdateMessageReaction], isLarge: Bool, storeAsRecentlyUsed: Bool, add: Bool = false) -> Signal<Never, NoError> {\n'
+    replace(root, 'submodules/TelegramCore/Sources/State/MessageReactions.swift', header,
+        header + '    if let peerId = messageIds.first?.peerId {\n        _internal_yepGramReadAfterAction(account: account, peerId: peerId)\n    }\n')
+    header = 'func _internal_requestMessageSelectPollOption(account: Account, messageId: MessageId, opaqueIdentifiers: [Data]) -> Signal<TelegramMediaPoll?, RequestMessageSelectPollOptionError> {\n'
+    replace(root, 'submodules/TelegramCore/Sources/TelegramEngine/Messages/Polls.swift', header,
+        header + '    _internal_yepGramReadAfterAction(account: account, peerId: messageId.peerId)\n')
+
+    # Settings switch for it, under the ghost switches.
+    path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
+    replace(root, path, '    case yepKeepEditHistory\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}')
+    typing = '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostNoTyping, value: YepGramSettings.ghost(.noTyping, accountId: accountId), text: yepGramText(lang, "Не отправлять «печатает…»", "Don\'t send typing status"), enabled: true))\n'
+    replace(root, path, typing, typing +
+        '    entries.append(.toggle(id: id.count, section: .yepGhost, settingName: .yepGhostReadAfterAction, value: YepGramSettings.ghost(.readAfterAction, accountId: accountId), text: yepGramText(lang, "Прочитать после действия", "Read after action"), enabled: YepGramSettings.ghost(.noReadReceipts, accountId: accountId)))\n'
+        '    entries.append(.notice(id: id.count, section: .yepGhost, text: yepGramText(lang, "Если вы ответили, поставили реакцию или проголосовали в чате, он отмечается прочитанным, чтобы собеседник не видел ответа без «прочитано».", "Replying, reacting or voting in a chat marks it read, so others don\'t see an answer without a read mark.")))\n')
+    toggle = ('        case .yepKeepEditHistory:\n'
+              '            YepGramSettings.keepEditHistory = value\n'
+              '            simplePromise.set(true)\n')
+    replace(root, path, toggle, toggle +
+        '        case .yepGhostReadAfterAction:\n'
+        '            YepGramSettings.setGhost(.readAfterAction, accountId: yepGramTargetAccountId, value)\n'
+        '            simplePromise.set(true)\n')
+
+    # Ghost mode from the Chats tab, and 👻 in the title while it is on.
+    path = 'submodules/ChatListUI/Sources/ChatListController.swift'
+    replace(root, path,
+        '            var items: [ContextMenuItem] = []\n'
+        '            items.append(.action(ContextMenuActionItem(text: hasFolders ? strongSelf.presentationData.strings.ChatList_EditFolders',
+        '            var items: [ContextMenuItem] = []\n'
+        '            // YepGram: ghost mode on and off from the Chats tab.\n'
+        '            let yepGramAccountId = strongSelf.context.account.peerId.id._internalGetInt64Value()\n'
+        '            let yepGramGhostOn = YepGramSettings.isGhostModeOn(accountId: yepGramAccountId)\n'
+        '            let yepGramIsRussian = strongSelf.presentationData.strings.baseLanguageCode == "ru"\n'
+        '            items.append(.action(ContextMenuActionItem(text: yepGramGhostOn ? (yepGramIsRussian ? "Выключить режим призрака" : "Turn off ghost mode") : (yepGramIsRussian ? "Включить режим призрака" : "Turn on ghost mode"), icon: { theme in\n'
+        '                return generateTintedImage(image: UIImage(bundleImageName: yepGramGhostOn ? "Chat/Context Menu/Eye" : "Chat/Context Menu/EyeLocked"), color: theme.contextMenu.primaryColor)\n'
+        '            }, action: { _, f in\n'
+        '                YepGramSettings.setGhostMode(!yepGramGhostOn, accountId: yepGramAccountId)\n'
+        '                f(.dismissWithoutContent)\n'
+        '            })))\n'
+        '            items.append(.separator)\n'
+        '            items.append(.action(ContextMenuActionItem(text: hasFolders ? strongSelf.presentationData.strings.ChatList_EditFolders')
+    replace(root, path,
+        '            if groupId == .root {\n                defaultTitle = presentationData.strings.DialogList_Title\n',
+        '            if groupId == .root {\n                // YepGram: 👻 while ghost mode is on.\n'
+        '                defaultTitle = presentationData.strings.DialogList_Title + (YepGramSettings.isGhostModeOn(accountId: self.context.account.peerId.id._internalGetInt64Value()) ? " 👻" : "")\n')
+
+
+def message_ids_in_menu(root):
+    path = 'submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift'
+    anchor = '        // YepGram: the earlier texts of an edited message.\n'
+    replace(root, path, anchor,
+        '        // YepGram: chat and message IDs, copied on tap.\n'
+        '        do {\n'
+        '            let isRussian = chatPresentationInterfaceState.strings.baseLanguageCode == "ru"\n'
+        '            let rawPeerId = message.id.peerId.id._internalGetInt64Value()\n'
+        '            let chatId: String\n'
+        '            if message.id.peerId.namespace == Namespaces.Peer.CloudChannel {\n'
+        '                chatId = "-100\\(rawPeerId)"\n'
+        '            } else if message.id.peerId.namespace == Namespaces.Peer.CloudGroup {\n'
+        '                chatId = "-\\(rawPeerId)"\n'
+        '            } else {\n'
+        '                chatId = "\\(rawPeerId)"\n'
+        '            }\n'
+        '            let idsText = (isRussian ? "ID чата: " : "Chat ID: ") + chatId + "\\n" + (isRussian ? "ID сообщения: " : "Message ID: ") + "\\(message.id.id)"\n'
+        '            sgActions.append(.action(ContextMenuActionItem(text: isRussian ? "Скопировать ID" : "Copy IDs", icon: { theme in\n'
+        '                return generateTintedImage(image: UIImage(bundleImageName: "Chat/Context Menu/Copy"), color: theme.actionSheet.primaryTextColor)\n'
+        '            }, action: { _, f in\n'
+        '                UIPasteboard.general.string = idsText\n'
+        '                f(.default)\n'
+        '            })))\n'
+        '        }\n' + anchor)
+
+
+def developer_badge(root):
+    folder = os.path.join(root, 'submodules/TelegramUI/Images.xcassets/YepGram/DeveloperBadge.imageset')
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(root, 'submodules/TelegramUI/Images.xcassets/YepGram/Contents.json'), 'w', encoding='utf-8') as f:
+        f.write('{\n  "info" : {\n    "author" : "xcode",\n    "version" : 1\n  },\n  "properties" : {\n    "provides-namespace" : true\n  }\n}\n')
+    shutil.copyfile(os.path.join(FILES_DIR, 'YepGramDeveloperBadge@3x.png'), os.path.join(folder, 'DeveloperBadge@3x.png'))
+    with open(os.path.join(folder, 'Contents.json'), 'w', encoding='utf-8') as f:
+        f.write('{\n  "images" : [\n    {\n      "filename" : "DeveloperBadge@3x.png",\n      "idiom" : "universal",\n      "scale" : "3x"\n    }\n  ],\n  "info" : {\n    "author" : "xcode",\n    "version" : 1\n  }\n}\n')
+    print('added developer badge image')
+
+    # Chat list rows: the badge takes the verified mark's place.
+    path = 'submodules/ChatListUI/Sources/Node/ChatListItem.swift'
+    text = read(root, path)
+    pattern = re.compile(r'(?P<indent>[ ]+)currentCredibilityIconContent = \.verified\(fillColor: item\.presentationData\.theme\.list\.itemCheckColors\.fillColor, foregroundColor: item\.presentationData\.theme\.list\.itemCheckColors\.foregroundColor, sizeType: \.compact\)\n(?P<close>[ ]+)\}\n')
+    def add_badge(m):
+        indent = m.group('close')
+        return (m.group(0) +
+                indent + 'if yepGramIsDeveloper(peer.id) {\n' +
+                indent + '    currentCredibilityIconContent = .image(image: UIImage(bundleImageName: "YepGram/DeveloperBadge"), tintColor: nil)\n' +
+                indent + '}\n')
+    text, n = pattern.subn(add_badge, text)
+    if n == 0:
+        failures.append('{}: verified mark not found'.format(path))
+    else:
+        write(root, path, text)
+        print('patched', path, '({} places)'.format(n))
+
+    # Profile header: shown where the verification mark would be.
+    path = 'submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/PeerInfoHeaderNode.swift'
+    text = read(root, path)
+    start = text.find('            switch verifiedIcon {\n')
+    default = ('            default:\n'
+               '                emojiRegularStatusContent = .none\n'
+               '                emojiExpandedStatusContent = .none\n')
+    at = text.find(default, start) if start >= 0 else -1
+    if at < 0:
+        failures.append('{}: verified icon switch not found'.format(path))
+    else:
+        text = text[:at] + (
+            '            default:\n'
+            '                // YepGram: the developer badge.\n'
+            '                if let peer, yepGramIsDeveloper(peer.id), let yepGramBadge = UIImage(bundleImageName: "YepGram/DeveloperBadge") {\n'
+            '                    emojiRegularStatusContent = .image(image: yepGramBadge, tintColor: nil)\n'
+            '                    emojiExpandedStatusContent = .image(image: yepGramBadge, tintColor: nil)\n'
+            '                } else {\n'
+            '                    emojiRegularStatusContent = .none\n'
+            '                    emojiExpandedStatusContent = .none\n'
+            '                }\n') + text[at + len(default):]
+        write(root, path, text)
+        print('patched', path, '(developer badge)')
+
+
+def whats_new(root):
+    path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
+    anchor = '        self.notificationMessagesDisposable.set((context.account.stateManager.notificationMessages\n'
+    replace(root, path, anchor,
+        '        // YepGram: what\'s new, once per release.\n'
+        '        let yepGramWhatsNewContext = context\n'
+        '        Queue.mainQueue().after(2.0, { [weak mainWindow] in\n'
+        '            let presentationData = yepGramWhatsNewContext.sharedContext.currentPresentationData.with { $0 }\n'
+        '            guard let mainWindow, let whatsNew = YepGramSettings.whatsNew(lang: presentationData.strings.baseLanguageCode) else {\n'
+        '                return\n'
+        '            }\n'
+        '            YepGramSettings.markWhatsNewSeen()\n'
+        '            mainWindow.present(textAlertController(context: yepGramWhatsNewContext, title: whatsNew.title, text: whatsNew.text, actions: [TextAlertAction(type: .defaultAction, title: presentationData.strings.Common_OK, action: {})]), on: .root)\n'
+        '        })\n'
+        '        \n' + anchor)
+
+
+def presence_account_id(root):
+    # Ghost "hide online" is per account, so the presence manager has to know which account it serves.
+    path = 'submodules/TelegramCore/Sources/State/ManagedAccountPresence.swift'
+    replace(root, path, '    private var wasOnline: Bool = false\n', '    private var wasOnline: Bool = false\n    private let accountPeerId: PeerId\n')
+    replace(root, path,
+        '    init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {\n        self.queue = queue\n        self.network = network\n',
+        '    init(queue: Queue, shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network, accountPeerId: PeerId) {\n        self.queue = queue\n        self.network = network\n        self.accountPeerId = accountPeerId\n')
+    replace(root, path,
+        '    init(shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network) {\n        let queue = self.queue\n        self.impl = QueueLocalObject(queue: self.queue, generate: {\n            return AccountPresenceManagerImpl(queue: queue, shouldKeepOnlinePresence: shouldKeepOnlinePresence, network: network)\n',
+        '    init(shouldKeepOnlinePresence: Signal<Bool, NoError>, network: Network, accountPeerId: PeerId) {\n        let queue = self.queue\n        self.impl = QueueLocalObject(queue: self.queue, generate: {\n            return AccountPresenceManagerImpl(queue: queue, shouldKeepOnlinePresence: shouldKeepOnlinePresence, network: network, accountPeerId: accountPeerId)\n')
+    replace(root, 'submodules/TelegramCore/Sources/Account/Account.swift',
+        'AccountPresenceManager(shouldKeepOnlinePresence: self.shouldKeepOnlinePresence.get(), network: network)',
+        'AccountPresenceManager(shouldKeepOnlinePresence: self.shouldKeepOnlinePresence.get(), network: network, accountPeerId: peerId)')
+
+
+def accounts_screen(root):
+    path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
+    replace(root, path, '    case yepAccount\n    case trending\n', '    case yepAccount\n    case yepAccountList\n    case yepBackground\n    case trending\n')
+    replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n}')
+
+    # Categories: Accounts lists the accounts; each opens its own screen (notifications and ghost mode).
+    replace(root, path, '    case other\n\n    func title(_ lang: String) -> String {\n', '    case other\n    case accountDetails\n\n    func title(_ lang: String) -> String {\n')
+    replace(root, path, '        case .other:\n            return yepGramText(lang, "Другое", "Other")\n        }\n',
+        '        case .other:\n            return yepGramText(lang, "Другое", "Other")\n        case .accountDetails:\n            return yepGramText(lang, "Аккаунт", "Account")\n        }\n')
+    replace(root, path, '        case .yepGram:\n            return [.yepGhost, .yepDeleted]\n        case .accounts:\n            return [.yepAccount]\n',
+        '        case .yepGram:\n            return [.yepGhost, .yepDeleted, .yepBackground]\n        case .accounts:\n            return [.yepAccountList]\n')
+    replace(root, path, '        case .other:\n            return [.content, .other]\n        }\n',
+        '        case .other:\n            return [.content, .other]\n        case .accountDetails:\n            return [.yepAccount, .yepGhost]\n        }\n')
+    replace(root, path, '        case .other:\n            return .yepCategoryOther\n        }\n',
+        '        case .other:\n            return .yepCategoryOther\n        case .accountDetails:\n            return .yepCategoryAccounts\n        }\n')
+    replace(root, path, '    for category in YepGramSettingsCategory.allCases {\n',
+        '    for category in YepGramSettingsCategory.allCases {\n        if category == .accountDetails {\n            continue\n        }\n')
+
+    replace(root, path, 'state: SGSettingsControllerState, category: YepGramSettingsCategory?, accountId: Int64) -> [SGControllerEntry] {\n',
+        'state: SGSettingsControllerState, category: YepGramSettingsCategory?, accountId: Int64, accounts: [(Int64, String)]) -> [SGControllerEntry] {\n')
+
+    replace(root, path,
+        '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "ЭТОТ АККАУНТ", "THIS ACCOUNT"), badge: nil))\n',
+        '    entries.append(.header(id: id.count, section: .yepAccountList, text: yepGramText(lang, "АККАУНТЫ", "ACCOUNTS"), badge: nil))\n'
+        '    for (listedAccountId, listedAccountName) in accounts {\n'
+        '        entries.append(.action(id: id.count, section: .yepAccountList, actionType: AnyHashable(listedAccountId), text: listedAccountName.isEmpty ? "ID \\(listedAccountId)" : listedAccountName, kind: .generic))\n'
+        '    }\n'
+        '    entries.append(.notice(id: id.count, section: .yepAccountList, text: yepGramText(lang, "Нажмите на аккаунт, чтобы настроить для него уведомления и режим призрака.", "Tap an account to set up its notifications and ghost mode.")))\n'
+        '    \n'
+        '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "УВЕДОМЛЕНИЯ", "NOTIFICATIONS"), badge: nil))\n')
+    replace(root, path,
+        '"Баннеры о новых сообщениях, пока YepGram открыт. У каждого аккаунта настройка своя: чтобы поменять её для другого, переключитесь на него.", "Banners for new messages while YepGram is open. Each account has its own setting: switch to another account to change it there."',
+        '"Баннеры о новых сообщениях, пока YepGram открыт или работает в фоне.", "Banners for new messages while YepGram is open or running in the background."')
+    replace(root, path, 'section: .yepAccount, settingName: .hidePhoneInSettings,', 'section: .yepAccountList, settingName: .hidePhoneInSettings,')
+    replace(root, path, 'entries.append(.notice(id: id.count, section: .yepAccount, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))',
+        'entries.append(.notice(id: id.count, section: .yepAccountList, text: i18n("Settings.HidePhoneInSettingsUI.Notice", lang)))')
+    replace(root, path, 'section: .yepAccount, settingName: .hideAccountInNotifications,', 'section: .yepAccountList, settingName: .hideAccountInNotifications,')
+
+    # Background mode switch in the YepGram category.
+    edit_notice = '    entries.append(.notice(id: id.count, section: .yepDeleted, text: yepGramText(lang, "Прошлые версии изменённых сообщений: удержите сообщение и выберите «История изменений».", "Earlier versions of edited messages: long-press a message and choose Edit history.")))\n'
+    replace(root, path, edit_notice, edit_notice +
+        '    \n'
+        '    entries.append(.header(id: id.count, section: .yepBackground, text: yepGramText(lang, "РАБОТА В ФОНЕ", "BACKGROUND"), badge: nil))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepBackground, settingName: .yepBackgroundMode, value: YepGramSettings.backgroundMode, text: yepGramText(lang, "Работать в фоне", "Run in background"), enabled: true))\n'
+        '    entries.append(.notice(id: id.count, section: .yepBackground, text: yepGramText(lang, "YepGram остаётся на связи после сворачивания: сам показывает уведомления о новых сообщениях и сохраняет удалённые сразу. Расходует больше батареи. Не работает, если смахнуть приложение из списка запущенных.", "YepGram stays connected after you leave it: it shows notifications for new messages itself and catches deleted messages right away. Uses more battery. Stops if you swipe the app away.")))\n')
+    toggle = ('        case .yepGhostReadAfterAction:\n'
+              '            YepGramSettings.setGhost(.readAfterAction, accountId: yepGramTargetAccountId, value)\n'
+              '            simplePromise.set(true)\n')
+    replace(root, path, toggle, toggle +
+        '        case .yepBackgroundMode:\n'
+        '            YepGramSettings.backgroundMode = value\n'
+        '            simplePromise.set(true)\n')
+    replace(root, path,
+        '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n',
+        '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: yepGramTargetAccountId)\n')
+
+    # The controller: which account it is about, the account list, and opening an account.
+    replace(root, path,
+        'private func yepGramSettingsController(context: AccountContext, category: YepGramSettingsCategory?) -> ViewController {\n',
+        'private func yepGramSettingsController(context: AccountContext, category: YepGramSettingsCategory?, detailsAccount: (id: Int64, name: String)? = nil) -> ViewController {\n'
+        '    // Ghost and notification switches act on the account this screen is about: the opened one, else the current one.\n'
+        '    let yepGramTargetAccountId = detailsAccount?.id ?? context.account.peerId.id._internalGetInt64Value()\n'
+        '    let yepGramAccountNames = Atomic<[Int64: String]>(value: [:])\n')
+    replace(root, path, '    }, searchInput: { searchQuery in\n',
+        '    }, action: { actionType in\n'
+        '        guard let listedAccountId = actionType.base as? Int64 else {\n'
+        '            return\n'
+        '        }\n'
+        '        let name = yepGramAccountNames.with { $0[listedAccountId] } ?? ""\n'
+        '        pushControllerImpl?(yepGramSettingsController(context: context, category: .accountDetails, detailsAccount: (listedAccountId, name)))\n'
+        '    }, searchInput: { searchQuery in\n')
+    replace(root, path, '    let signal = combineLatest(simplePromise.get(), /*sliderPromise.get(),*/ statePromise.get(),',
+        '    let yepGramAccounts: Signal<[(Int64, String)], NoError> = context.sharedContext.activeAccountContexts\n'
+        '    |> mapToSignal { activeAccounts -> Signal<[(Int64, String)], NoError> in\n'
+        '        return combineLatest(activeAccounts.accounts.map { _, accountContext, _ -> Signal<(Int64, String), NoError> in\n'
+        '            let accountId = accountContext.account.peerId.id._internalGetInt64Value()\n'
+        '            return accountContext.engine.data.get(TelegramEngine.EngineData.Item.Peer.Peer(id: accountContext.account.peerId))\n'
+        '            |> map { peer -> (Int64, String) in\n'
+        '                guard case let .user(user)? = peer else {\n'
+        '                    return (accountId, "")\n'
+        '                }\n'
+        '                return (accountId, [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))\n'
+        '            }\n'
+        '        })\n'
+        '    }\n'
+        '    \n'
+        '    let signal = combineLatest(combineLatest(simplePromise.get(), yepGramAccounts), /*sliderPromise.get(),*/ statePromise.get(),')
+    replace(root, path, '    |> map { _, /*sliderValue,*/ state, presentationData,', '    |> map { simpleAndAccounts, /*sliderValue,*/ state, presentationData,')
+    replace(root, path,
+        'state: state, category: category, accountId: context.account.peerId.id._internalGetInt64Value())\n',
+        'state: state, category: category, accountId: yepGramTargetAccountId, accounts: simpleAndAccounts.1)\n')
+    replace(root, path, '        let entries = SGControllerEntries(',
+        '        let _ = yepGramAccountNames.swap(Dictionary(simpleAndAccounts.1, uniquingKeysWith: { first, _ in first }))\n'
+        '        let entries = SGControllerEntries(')
+    replace(root, path, 'title: .text(category?.title(presentationData.strings.baseLanguageCode) ?? "YepGram")',
+        'title: .text(detailsAccount?.name ?? category?.title(presentationData.strings.baseLanguageCode) ?? "YepGram")')
+
+
+def background_mode(root):
+    # Keepalive: Telegram's own (disabled) silent renderer, switched on by the setting and kept on a
+    # category that really keeps the app running in the background.
+    path = 'submodules/TelegramUI/Sources/SharedWakeupManager.swift'
+    replace(root, path, 'import TelegramPresentationData\n', 'import TelegramPresentationData\nimport SGSimpleSettings\n')
+    call = '        self.updateAccounts(hasTasks: hasTasksForBackgroundExtension, endTaskAfterTransactionsComplete: endTaskAfterTransactionsComplete)\n'
+    replace(root, path, call,
+        '        // YepGram background mode: play silence while in the background so the app keeps running and connected.\n'
+        '        // It yields to the app\'s own audio (voice messages, calls) and comes back when that ends.\n'
+        '        if !self.inForeground && !self.hasActiveAudioSession && YepGramSettings.backgroundMode {\n'
+        '            if self.silenceAudioRenderer == nil {\n'
+        '                let audioSession = AVAudioSession.sharedInstance()\n'
+        '                let silenceAudioRenderer = MediaPlayerAudioRenderer(\n'
+        '                    audioSession: .custom({ control in\n'
+        '                        let _ = try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])\n'
+        '                        let _ = try? audioSession.setActive(true)\n'
+        '                        control.activate()\n'
+        '                        return EmptyDisposable\n'
+        '                    }),\n'
+        '                    forAudioVideoMessage: false,\n'
+        '                    playAndRecord: false,\n'
+        '                    useVoiceProcessingMode: false,\n'
+        '                    soundMuted: false,\n'
+        '                    ambient: false,\n'
+        '                    mixWithOthers: true,\n'
+        '                    forceAudioToSpeaker: false,\n'
+        '                    baseRate: 1.0,\n'
+        '                    audioLevelPipe: ValuePipe(),\n'
+        '                    updatedRate: {},\n'
+        '                    audioPaused: {}\n'
+        '                )\n'
+        '                self.silenceAudioRenderer = silenceAudioRenderer\n'
+        '                silenceAudioRenderer.start()\n'
+        '            }\n'
+        '        } else if let silenceAudioRenderer = self.silenceAudioRenderer {\n'
+        '            self.silenceAudioRenderer = nil\n'
+        '            silenceAudioRenderer.stop()\n'
+        '        }\n'
+        '        \n' + call)
+    # While it runs, the primary account keeps receiving updates.
+    replace(root, path,
+        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) {\n',
+        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) || (self.silenceAudioRenderer != nil && primary) {\n')
+
+    # New messages while in the background become local notifications.
+    path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
+    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\n')
+    anchor = '            if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {\n'
+    replace(root, path, anchor, anchor +
+        '                // YepGram background mode: no pushes on a sideloaded build, so notify locally.\n'
+        '                if UIApplication.shared.applicationState != .active && YepGramSettings.backgroundMode && notify {\n'
+        '                    yepGramPostLocalNotification(message: firstMessage, count: messages.count)\n'
+        '                    return\n'
+        '                }\n')
+    text = read(root, path)
+    write(root, path, text.rstrip('\n') + '\n\n'
+        'private func yepGramPeerTitle(_ peer: EnginePeer) -> String {\n'
+        '    switch peer {\n'
+        '    case let .user(user):\n'
+        '        return [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")\n'
+        '    case let .legacyGroup(group):\n'
+        '        return group.title\n'
+        '    case let .channel(channel):\n'
+        '        return channel.title\n'
+        '    case .secretChat:\n'
+        '        return ""\n'
+        '    }\n'
+        '}\n\n'
+        '// YepGram background mode: a local notification for a new message.\n'
+        'private func yepGramPostLocalNotification(message: EngineRawMessage, count: Int) {\n'
+        '    let content = UNMutableNotificationContent()\n'
+        '    let authorTitle = message.author.flatMap { yepGramPeerTitle(EnginePeer($0)) } ?? ""\n'
+        '    if let chatPeer = message.peers[message.id.peerId], !(chatPeer is TelegramUser) {\n'
+        '        let chatTitle = yepGramPeerTitle(EnginePeer(chatPeer))\n'
+        '        content.title = authorTitle.isEmpty || authorTitle == chatTitle ? chatTitle : chatTitle + ": " + authorTitle\n'
+        '    } else {\n'
+        '        content.title = authorTitle\n'
+        '    }\n'
+        '    var body = message.text.isEmpty ? "📎" : message.text\n'
+        '    if count > 1 {\n'
+        '        body += " (+\\(count - 1))"\n'
+        '    }\n'
+        '    content.body = body\n'
+        '    content.sound = .default\n'
+        '    content.threadIdentifier = "\\(message.id.peerId.toInt64())"\n'
+        '    let request = UNNotificationRequest(identifier: "yepgram-\\(message.id.peerId.toInt64())-\\(message.id.id)", content: content, trigger: nil)\n'
+        '    UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)\n'
+        '}\n')
+    print('patched', path, '(local notifications)')
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -770,6 +1123,13 @@ def main():
     per_account_in_app_notifications(root)
     intro_logo(root)
     edit_history(root)
+    ghost_extras(root)
+    message_ids_in_menu(root)
+    developer_badge(root)
+    whats_new(root)
+    presence_account_id(root)
+    accounts_screen(root)
+    background_mode(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:
