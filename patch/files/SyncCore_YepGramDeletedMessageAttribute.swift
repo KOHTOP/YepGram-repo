@@ -1,5 +1,6 @@
 import Foundation
 import Postbox
+import SGSimpleSettings
 
 // YepGram: a message the server deleted is kept locally and carries this attribute,
 // so the chat can still show it with a "deleted" mark next to its time.
@@ -49,6 +50,9 @@ private func yepGramShouldKeepDeletedMessage(_ message: Message) -> Bool {
 /// Marks the stored messages among `ids` as deleted instead of removing them.
 /// Returns the ids that were not kept, which the caller deletes as before.
 func _internal_yepGramKeepDeletedMessages(transaction: Transaction, ids: [MessageId]) -> [MessageId] {
+    if !YepGramSettings.keepDeletedMessages {
+        return ids
+    }
     let timestamp = Int32(Date().timeIntervalSince1970)
     var notKept: [MessageId] = []
     for id in ids {
