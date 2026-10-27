@@ -251,6 +251,25 @@ private func maybeAddRotationAnimation(''')
         print('patched', path, '({} call(s))'.format(inserted))
 
 
+def sideload_app_group(root):
+    path = 'submodules/TelegramUI/Sources/AppDelegate.swift'
+    group = 'let appGroupName = "group.\\(baseAppBundleId)"'
+    replace(root, path,
+        '        let baseAppBundleId = Bundle.main.bundleIdentifier!\n        ' + group + '\n\n        let configuration = URLSessionConfiguration.background',
+        '        let baseAppBundleId = Bundle.main.bundleIdentifier!\n        let appGroupName = yepGramResolvedAppGroup(baseAppBundleId: baseAppBundleId).name\n\n        let configuration = URLSessionConfiguration.background')
+    replace(root, path,
+        '        ' + group + '\n        try! PasscodeEnvironment.shared.configure(',
+        '        let yepGramAppGroup = yepGramResolvedAppGroup(baseAppBundleId: baseAppBundleId)\n        let appGroupName = yepGramAppGroup.name\n        try! PasscodeEnvironment.shared.configure(')
+    replace(root, path,
+        '        let maybeAppGroupUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)\n',
+        '        let maybeAppGroupUrl = yepGramAppGroup.url\n')
+    text = read(root, path)
+    with open(os.path.join(FILES_DIR, 'AppDelegate+YepGramAppGroup.swift.txt'), encoding='utf-8') as f:
+        helper = f.read()
+    write(root, path, text.rstrip('\n') + '\n' + helper)
+    print('patched', path, '(app group resolver)')
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -261,6 +280,7 @@ def main():
     lime_theme(root)
     keep_deleted_messages(root)
     deleted_mark_in_chat(root)
+    sideload_app_group(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:

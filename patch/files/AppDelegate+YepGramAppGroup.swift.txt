@@ -1,0 +1,40 @@
+
+// YepGram: a sideloaded build is re-signed under a new bundle id, so "group.<bundle id>" is usually
+// not among the app groups the new signature grants and its container lookup returns nil, which
+// left the app on a black screen. Prefer the usual group, then any group the embedded provisioning
+// profile grants, then a private directory (a sideloaded build has no extensions to share with).
+private func yepGramResolvedAppGroup(baseAppBundleId: String) -> (name: String, url: URL?) {
+    let preferredName = "group.\(baseAppBundleId)"
+    if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: preferredName) {
+        return (preferredName, url)
+    }
+    for name in yepGramProvisionedAppGroups() {
+        if let url = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: name) {
+            return (name, url)
+        }
+    }
+    guard let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        return (preferredName, nil)
+    }
+    let fallbackUrl = applicationSupport.appendingPathComponent("YepGramSharedContainer", isDirectory: true)
+    try? FileManager.default.createDirectory(at: fallbackUrl, withIntermediateDirectories: true)
+    return (preferredName, fallbackUrl)
+}
+
+private func yepGramProvisionedAppGroups() -> [String] {
+    guard let profileUrl = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"), let data = try? Data(contentsOf: profileUrl) else {
+        return []
+    }
+    // The profile is a CMS envelope around a plain XML plist.
+    guard let start = data.range(of: Data("<?xml".utf8)), let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound ..< data.endIndex) else {
+        return []
+    }
+    let plistData = data.subdata(in: start.lowerBound ..< end.upperBound)
+    guard let plist = (try? PropertyListSerialization.propertyList(from: plistData, options: [], format: nil)) as? [String: Any] else {
+        return []
+    }
+    guard let entitlements = plist["Entitlements"] as? [String: Any], let groups = entitlements["com.apple.security.application-groups"] as? [String] else {
+        return []
+    }
+    return groups
+}
