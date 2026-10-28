@@ -1017,7 +1017,7 @@ def accounts_screen(root):
         '                YepGramSettings.setAccountLabel(accountId: yepGramTargetAccountId, newTag)\n'
         '                simplePromise.set(true)\n'
         '            }))\n'
-        '            context.sharedContext.mainWindow?.viewController?.present(alert, animated: true, completion: nil)\n'
+        '            context.sharedContext.applicationBindings.presentNativeController(alert)\n'
         '            return\n'
         '        }\n'
         '        guard let listedAccountId = actionType.base as? Int64 else {\n'
