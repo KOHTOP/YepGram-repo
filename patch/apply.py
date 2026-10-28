@@ -1136,7 +1136,7 @@ def background_mode(root):
 
     # New messages while in the background become rich local notifications.
     path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
-    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\nimport Postbox\n')
+    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\n')
     anchor = '            if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {\n'
     replace(root, path, anchor, anchor +
         '                // YepGram background mode: no pushes on a sideloaded build, so notify locally.\n'
@@ -1147,7 +1147,7 @@ def background_mode(root):
     text = read(root, path)
     write(root, path, text.rstrip('\n') + '\n\n'
         '// YepGram background mode: a rich local notification for a new message.\n'
-        'func yepGramPostLocalNotification(message: Message, count: Int, accountId: Int64? = nil) {\n'
+        'func yepGramPostLocalNotification(message: EngineRawMessage, count: Int, accountId: Int64? = nil) {\n'
         '    let content = UNMutableNotificationContent()\n'
         '    let chatPeer = message.peers[message.id.peerId]\n'
         '    let authorPeer = message.author\n'
@@ -1228,7 +1228,6 @@ def background_mode(root):
 def background_all_accounts(root):
     # The primary account is notified by its ApplicationContext; the others are watched here.
     path = 'submodules/TelegramUI/Sources/SharedAccountContext.swift'
-    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport Postbox\n')
     replace(root, path,
         '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n',
         '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n'
@@ -1237,7 +1236,7 @@ def background_all_accounts(root):
         '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n',
         '        // YepGram background mode: local notifications for every account but the primary one.\n'
         '        self.yepGramBackgroundNotificationsDisposable.set((self.activeAccountContexts\n'
-        '        |> mapToSignal { activeAccounts -> Signal<[(Message, Int, Int64)], NoError> in\n'
+        '        |> mapToSignal { activeAccounts -> Signal<[(EngineRawMessage, Int, Int64)], NoError> in\n'
         '            let primaryId = activeAccounts.primary?.account.id\n'
         '            let others = activeAccounts.accounts.map { $0.1 }.filter { $0.account.id != primaryId }\n'
         '            return Signal { subscriber in\n'
@@ -1249,7 +1248,7 @@ def background_all_accounts(root):
         '                        if YepGramSettings.isInAppNotificationsMuted(accountId: peerIdValue) {\n'
         '                            return\n'
         '                        }\n'
-        '                        let items = list.compactMap { item -> (Message, Int, Int64)? in\n'
+        '                        let items = list.compactMap { item -> (EngineRawMessage, Int, Int64)? in\n'
         '                            guard item.2, let first = item.0.first else {\n'
         '                                return nil\n'
         '                            }\n'
