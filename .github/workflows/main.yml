@@ -9,6 +9,10 @@ on:
       runner:
         description: Runner label (needs Xcode 27)
         default: xcode-27
+      clean_cache:
+        description: Clear Bazel disk cache before building
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -99,13 +103,31 @@ jobs:
               json.dump(config, f)
           EOF
 
+      - name: Cache Bazel artifacts
+        uses: actions/cache@v4
+        with:
+          path: /Users/Shared/bazel-cache
+          key: bazel-cache-${{ inputs.upstream_ref }}-${{ github.run_id }}
+          restore-keys: |
+            bazel-cache-${{ inputs.upstream_ref }}-
+            bazel-cache-
+
+      - name: Clear cache if requested
+        if: ${{ inputs.clean_cache }}
+        run: |
+          echo "Cleaning Bazel disk cache..."
+          rm -rf /Users/Shared/bazel-cache/*
+
       - name: Build
         run: |
+          sudo mkdir -p /Users/Shared/bazel-cache
+          sudo chown -R "$USER" /Users/Shared/bazel-cache
           cd /Users/Shared/telegram-ios
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           python3 -u build-system/Make/Make.py \
             --overrideXcodeVersion \
             --bazelUserRoot=/private/var/tmp/_bazel_yepgram \
+            --cacheDir=/Users/Shared/bazel-cache \
             build \
             --continueOnError \
             --configurationPath=/Users/Shared/yepgram-configuration.json \

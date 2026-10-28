@@ -1097,38 +1097,23 @@ def background_mode(root):
     write(root, path, text.rstrip('\n') + '\n\n'
         '// Minimal 1-second RIFF PCM WAV buffer (8000Hz, 16-bit mono) of digital silence.\n'
         'private func makeYepGramSilentWav() -> Data {\n'
-        '    let sampleRate: Int32 = 8000\n'
-        '    let numChannels: Int16 = 1\n'
-        '    let bitsPerSample: Int16 = 16\n'
-        '    let byteRate: Int32 = sampleRate * Int32(numChannels) * Int32(bitsPerSample / 8)\n'
-        '    let blockAlign: Int16 = numChannels * (bitsPerSample / 8)\n'
-        '    let numSamples = Int(sampleRate)\n'
-        '    let dataSize = Int32(numSamples * Int(blockAlign))\n'
-        '    let chunkSize = 36 + dataSize\n'
-        '    var data = Data()\n'
-        '    data.append(contentsOf: [0x52, 0x49, 0x46, 0x46])\n'
-        '    var cSize = chunkSize.littleEndian\n'
-        '    withUnsafeBytes(of: &cSize) { data.append(contentsOf: $0) }\n'
-        '    data.append(contentsOf: [0x57, 0x41, 0x56, 0x45])\n'
-        '    data.append(contentsOf: [0x66, 0x6d, 0x74, 0x20])\n'
-        '    var subchunk1Size: Int32 = 16.littleEndian\n'
-        '    withUnsafeBytes(of: &subchunk1Size) { data.append(contentsOf: $0) }\n'
-        '    var audioFormat: Int16 = 1.littleEndian\n'
-        '    withUnsafeBytes(of: &audioFormat) { data.append(contentsOf: $0) }\n'
-        '    var channels = numChannels.littleEndian\n'
-        '    withUnsafeBytes(of: &channels) { data.append(contentsOf: $0) }\n'
-        '    var sRate = sampleRate.littleEndian\n'
-        '    withUnsafeBytes(of: &sRate) { data.append(contentsOf: $0) }\n'
-        '    var bRate = byteRate.littleEndian\n'
-        '    withUnsafeBytes(of: &bRate) { data.append(contentsOf: $0) }\n'
-        '    var bAlign = blockAlign.littleEndian\n'
-        '    withUnsafeBytes(of: &bAlign) { data.append(contentsOf: $0) }\n'
-        '    var bPerSample = bitsPerSample.littleEndian\n'
-        '    withUnsafeBytes(of: &bPerSample) { data.append(contentsOf: $0) }\n'
-        '    data.append(contentsOf: [0x64, 0x61, 0x74, 0x61])\n'
-        '    var dSize = dataSize.littleEndian\n'
-        '    withUnsafeBytes(of: &dSize) { data.append(contentsOf: $0) }\n'
-        '    data.append(Data(count: Int(dataSize)))\n'
+        '    let header: [UInt8] = [\n'
+        '        0x52, 0x49, 0x46, 0x46,\n'
+        '        0xA4, 0x3E, 0x00, 0x00,\n'
+        '        0x57, 0x41, 0x56, 0x45,\n'
+        '        0x66, 0x6D, 0x74, 0x20,\n'
+        '        0x10, 0x00, 0x00, 0x00,\n'
+        '        0x01, 0x00,\n'
+        '        0x01, 0x00,\n'
+        '        0x40, 0x1F, 0x00, 0x00,\n'
+        '        0x80, 0x3E, 0x00, 0x00,\n'
+        '        0x02, 0x00,\n'
+        '        0x10, 0x00,\n'
+        '        0x64, 0x61, 0x74, 0x61,\n'
+        '        0x80, 0x3E, 0x00, 0x00\n'
+        '    ]\n'
+        '    var data = Data(header)\n'
+        '    data.append(Data(count: 16000))\n'
         '    return data\n'
         '}\n')
 
@@ -1144,14 +1129,14 @@ def background_mode(root):
         '            if #available(iOS 14.0, *) {\n'
         '                completionHandler([.banner, .sound, .badge, .list])\n'
         '            } else {\n'
-        '                completionHandler([.alert, .sound, .badge])\n'
+        '                completionHandler([.sound, .badge])\n'
         '            }\n'
         '            return\n'
         '        }\n')
 
     # New messages while in the background become rich local notifications.
     path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
-    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\n')
+    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\nimport Postbox\n')
     anchor = '            if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {\n'
     replace(root, path, anchor, anchor +
         '                // YepGram background mode: no pushes on a sideloaded build, so notify locally.\n'
@@ -1161,40 +1146,14 @@ def background_mode(root):
         '                }\n')
     text = read(root, path)
     write(root, path, text.rstrip('\n') + '\n\n'
-        'private func yepGramPeerTitle(_ peer: EnginePeer) -> String {\n'
-        '    switch peer {\n'
-        '    case let .user(user):\n'
-        '        let parts = [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }\n'
-        '        if !parts.isEmpty {\n'
-        '            return parts.joined(separator: " ")\n'
-        '        }\n'
-        '        if let phone = user.phone, !phone.isEmpty {\n'
-        '            return phone\n'
-        '        }\n'
-        '        return ""\n'
-        '    case let .legacyGroup(group):\n'
-        '        return group.title\n'
-        '    case let .channel(channel):\n'
-        '        return channel.title\n'
-        '    case let .community(community):\n'
-        '        return community.title\n'
-        '    case .secretChat:\n'
-        '        return ""\n'
-        '    }\n'
-        '}\n\n'
         '// YepGram background mode: a rich local notification for a new message.\n'
-        'func yepGramPostLocalNotification(message: EngineRawMessage, count: Int, accountId: Int64? = nil) {\n'
+        'func yepGramPostLocalNotification(message: Message, count: Int, accountId: Int64? = nil) {\n'
         '    let content = UNMutableNotificationContent()\n'
-        '    let chatPeer = message.peers[message.id.peerId].map(EnginePeer.init)\n'
-        '    let authorPeer = message.author.map(EnginePeer.init)\n'
-        '    let chatTitle = chatPeer.map(yepGramPeerTitle) ?? ""\n'
-        '    let authorTitle = authorPeer.map(yepGramPeerTitle) ?? ""\n'
-        '    let isUserChat: Bool\n'
-        '    if let chatPeer = chatPeer, case .user = chatPeer {\n'
-        '        isUserChat = true\n'
-        '    } else {\n'
-        '        isUserChat = false\n'
-        '    }\n'
+        '    let chatPeer = message.peers[message.id.peerId]\n'
+        '    let authorPeer = message.author\n'
+        '    let chatTitle = chatPeer?.debugDisplayTitle ?? ""\n'
+        '    let authorTitle = authorPeer?.debugDisplayTitle ?? ""\n'
+        '    let isUserChat = chatPeer is TelegramUser\n'
         '    if isUserChat {\n'
         '        let name = !authorTitle.isEmpty ? authorTitle : chatTitle\n'
         '        content.title = !name.isEmpty ? name : "Сообщение"\n'
@@ -1269,6 +1228,7 @@ def background_mode(root):
 def background_all_accounts(root):
     # The primary account is notified by its ApplicationContext; the others are watched here.
     path = 'submodules/TelegramUI/Sources/SharedAccountContext.swift'
+    replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport Postbox\n')
     replace(root, path,
         '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n',
         '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n'
@@ -1277,7 +1237,7 @@ def background_all_accounts(root):
         '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n',
         '        // YepGram background mode: local notifications for every account but the primary one.\n'
         '        self.yepGramBackgroundNotificationsDisposable.set((self.activeAccountContexts\n'
-        '        |> mapToSignal { activeAccounts -> Signal<[(EngineRawMessage, Int, Int64)], NoError> in\n'
+        '        |> mapToSignal { activeAccounts -> Signal<[(Message, Int, Int64)], NoError> in\n'
         '            let primaryId = activeAccounts.primary?.account.id\n'
         '            let others = activeAccounts.accounts.map { $0.1 }.filter { $0.account.id != primaryId }\n'
         '            return Signal { subscriber in\n'
@@ -1289,7 +1249,7 @@ def background_all_accounts(root):
         '                        if YepGramSettings.isInAppNotificationsMuted(accountId: peerIdValue) {\n'
         '                            return\n'
         '                        }\n'
-        '                        let items = list.compactMap { item -> (EngineRawMessage, Int, Int64)? in\n'
+        '                        let items = list.compactMap { item -> (Message, Int, Int64)? in\n'
         '                            guard item.2, let first = item.0.first else {\n'
         '                                return nil\n'
         '                            }\n'
@@ -1402,6 +1362,44 @@ def quick_account_swipe(root):
     print('patched', path, '(quick account swipe)')
 
 
+def fast_build_optimizations(root):
+    # Disable redundant dSYM generation in release_arm64 for sideload builds (saves ~3-5 minutes of CPU & disk I/O).
+    path = 'build-system/Make/Make.py'
+    replace(root, path,
+        "                # Generate DSYM files when building.\n"
+        "                '--apple_generate_dsym',\n\n"
+        "                # Require DSYM files as build output.\n"
+        "                '--output_groups=+dsyms',\n",
+        "")
+    replace(root, path,
+        "        for dsym_path in dsym_paths:\n"
+        "            file_name = os.path.basename(dsym_path)\n"
+        "            shutil.copytree(dsym_path, artifacts_path + '/DSYMs/{}'.format(file_name))\n"
+        "        previous_directory = os.getcwd()\n"
+        "        os.chdir(artifacts_path)\n"
+        "        run_executable_with_output('zip', arguments=[\n"
+        "            '-r',\n"
+        "            'Swiftgram.DSYMs.zip',\n"
+        "            './DSYMs'\n"
+        "        ], check_result=True)\n"
+        "        os.chdir(previous_directory)\n"
+        "        shutil.rmtree(artifacts_path + '/DSYMs')\n",
+        "        if len(dsym_paths) > 0:\n"
+        "            for dsym_path in dsym_paths:\n"
+        "                file_name = os.path.basename(dsym_path)\n"
+        "                shutil.copytree(dsym_path, artifacts_path + '/DSYMs/{}'.format(file_name))\n"
+        "            previous_directory = os.getcwd()\n"
+        "            os.chdir(artifacts_path)\n"
+        "            run_executable_with_output('zip', arguments=[\n"
+        "                '-r',\n"
+        "                'Swiftgram.DSYMs.zip',\n"
+        "                './DSYMs'\n"
+        "            ], check_result=True)\n"
+        "            os.chdir(previous_directory)\n"
+        "        if os.path.exists(artifacts_path + '/DSYMs'):\n"
+        "            shutil.rmtree(artifacts_path + '/DSYMs')\n")
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -1433,6 +1431,7 @@ def main():
     account_limits(root)
     account_labels_in_switcher(root)
     quick_account_swipe(root)
+    fast_build_optimizations(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:
