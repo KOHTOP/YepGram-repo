@@ -1004,6 +1004,7 @@ def accounts_screen(root):
     replace(root, path, '    }, searchInput: { searchQuery in\n',
         '    }, action: { actionType in\n'
         '        if let str = actionType.base as? String, str == "yepEditAccountLabel" {\n'
+        '            let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n'
         '            let isRussian = presentationData.strings.baseLanguageCode == "ru"\n'
         '            let alert = UIAlertController(title: isRussian ? "Метка аккаунта" : "Account Tag", message: isRussian ? "Введите метку для этого аккаунта (например: Работа, Проект, Саппорт):" : "Enter a label for this account (e.g. Work, Project, Support):", preferredStyle: .alert)\n'
         '            alert.addTextField { tf in\n'
