@@ -1052,10 +1052,10 @@ def background_mode(root):
         '            silenceAudioRenderer.stop()\n'
         '        }\n'
         '        \n' + call)
-    # While it runs, the primary account keeps receiving updates.
+    # While it runs, every account keeps receiving updates.
     replace(root, path,
         '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) {\n',
-        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) || (self.silenceAudioRenderer != nil && primary) {\n')
+        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) || self.silenceAudioRenderer != nil {\n')
 
     # New messages while in the background become local notifications.
     path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
@@ -1077,12 +1077,14 @@ def background_mode(root):
         '        return group.title\n'
         '    case let .channel(channel):\n'
         '        return channel.title\n'
+        '    case let .community(community):\n'
+        '        return community.title\n'
         '    case .secretChat:\n'
         '        return ""\n'
         '    }\n'
         '}\n\n'
         '// YepGram background mode: a local notification for a new message.\n'
-        'private func yepGramPostLocalNotification(message: EngineRawMessage, count: Int) {\n'
+        'func yepGramPostLocalNotification(message: EngineRawMessage, count: Int) {\n'
         '    let content = UNMutableNotificationContent()\n'
         '    let authorTitle = message.author.flatMap { yepGramPeerTitle(EnginePeer($0)) } ?? ""\n'
         '    if let chatPeer = message.peers[message.id.peerId], !(chatPeer is TelegramUser) {\n'
@@ -1102,6 +1104,54 @@ def background_mode(root):
         '    UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)\n'
         '}\n')
     print('patched', path, '(local notifications)')
+
+def background_all_accounts(root):
+    # The primary account is notified by its ApplicationContext; the others are watched here.
+    path = 'submodules/TelegramUI/Sources/SharedAccountContext.swift'
+    replace(root, path,
+        '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n',
+        '    private var immediateSGStatusValue = Atomic<SGStatus>(value: SGStatus.default)\n'
+        '    private let yepGramBackgroundNotificationsDisposable = MetaDisposable()\n')
+    replace(root, path,
+        '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n',
+        '        // YepGram background mode: local notifications for every account but the primary one.\n'
+        '        self.yepGramBackgroundNotificationsDisposable.set((self.activeAccountContexts\n'
+        '        |> mapToSignal { activeAccounts -> Signal<[(EngineRawMessage, Int)], NoError> in\n'
+        '            let primaryId = activeAccounts.primary?.account.id\n'
+        '            let others = activeAccounts.accounts.map { $0.1 }.filter { $0.account.id != primaryId }\n'
+        '            return Signal { subscriber in\n'
+        '                let disposables = DisposableSet()\n'
+        '                for accountContext in others {\n'
+        '                    let accountId = accountContext.account.peerId.id._internalGetInt64Value()\n'
+        '                    disposables.add(accountContext.account.stateManager.notificationMessages.start(next: { list in\n'
+        '                        if YepGramSettings.isInAppNotificationsMuted(accountId: accountId) {\n'
+        '                            return\n'
+        '                        }\n'
+        '                        let items = list.compactMap { item -> (EngineRawMessage, Int)? in\n'
+        '                            guard item.2, let first = item.0.first else {\n'
+        '                                return nil\n'
+        '                            }\n'
+        '                            return (first, item.0.count)\n'
+        '                        }\n'
+        '                        if !items.isEmpty {\n'
+        '                            subscriber.putNext(items)\n'
+        '                        }\n'
+        '                    }))\n'
+        '                }\n'
+        '                return disposables\n'
+        '            }\n'
+        '        }\n'
+        '        |> deliverOnMainQueue).start(next: { items in\n'
+        '            guard UIApplication.shared.applicationState != .active, YepGramSettings.backgroundMode else {\n'
+        '                return\n'
+        '            }\n'
+        '            for (message, count) in items {\n'
+        '                yepGramPostLocalNotification(message: message, count: count)\n'
+        '            }\n'
+        '        }))\n'
+        '        \n'
+        '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n')
+
 
 def main():
     if len(sys.argv) != 2:
@@ -1130,6 +1180,7 @@ def main():
     presence_account_id(root)
     accounts_screen(root)
     background_mode(root)
+    background_all_accounts(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:

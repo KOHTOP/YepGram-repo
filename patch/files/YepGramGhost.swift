@@ -56,7 +56,7 @@ func _internal_yepGramReadAfterAction(account: Account, peerId: PeerId) {
         }
         |> mapToSignal { result -> Signal<Never, NoError> in
             if let result, case let .affectedMessages(data) = result {
-                stateManager.addUpdateGroups([.updatePts(pts: data.pts, ptsCount: data.ptsCount)])
+                stateManager?.addUpdateGroups([.updatePts(pts: data.pts, ptsCount: data.ptsCount)])
             }
             return .complete()
         }
