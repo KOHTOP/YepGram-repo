@@ -1142,7 +1142,7 @@ def background_mode(root):
     replace(root, path, anchor, anchor +
         '                // YepGram background mode: no pushes on a sideloaded build, so notify locally.\n'
         '                if UIApplication.shared.applicationState != .active && YepGramSettings.backgroundMode && notify {\n'
-        '                    yepGramPostLocalNotification(message: firstMessage, count: messages.count, accountId: strongSelf.context.account.id.rawValue)\n'
+        '                    yepGramPostLocalNotification(message: firstMessage, count: messages.count, accountId: strongSelf.context.account.id.int64)\n'
         '                    return\n'
         '                }\n')
     text = read(root, path)
@@ -1243,7 +1243,7 @@ def background_all_accounts(root):
         '            return Signal { subscriber in\n'
         '                let disposables = DisposableSet()\n'
         '                for accountContext in others {\n'
-        '                    let accountRecordId = accountContext.account.id.rawValue\n'
+        '                    let accountRecordId = accountContext.account.id.int64\n'
         '                    let peerIdValue = accountContext.account.peerId.id._internalGetInt64Value()\n'
         '                    disposables.add(accountContext.account.stateManager.notificationMessages.start(next: { list in\n'
         '                        if YepGramSettings.isInAppNotificationsMuted(accountId: peerIdValue) {\n'
@@ -1348,7 +1348,7 @@ def quick_account_swipe(root):
         '            let targetId = accounts[targetIndex].0\n'
         '            let generator = UIImpactFeedbackGenerator(style: .medium)\n'
         '            generator.impactOccurred()\n'
-        '            sharedContext.switchToAccount(id: targetId)\n'
+        '            sharedContext.switchToAccount(id: targetId, fromSettingsController: nil, withChatListController: nil)\n'
         '        })\n'
         '    }\n'
         '    \n'
