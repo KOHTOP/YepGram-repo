@@ -456,6 +456,7 @@ def ghost_mode(root):
 
 def yepgram_settings_ui(root):
     path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
+    replace(root, path, 'import UndoUI\n', 'import UndoUI\nimport UserNotifications\n')
     replace(root, path, '    case search\n    case trending\n',
         '    case search\n    case yepCategories\n    case yepLinks\n    case yepGhost\n    case yepDeleted\n    case yepAccount\n    case trending\n')
     replace(root, path, '    case hideAccountInNotifications\n}',
@@ -801,8 +802,12 @@ def ghost_extras(root):
         '            items.append(.action(ContextMenuActionItem(text: hasFolders ? strongSelf.presentationData.strings.ChatList_EditFolders')
     replace(root, path,
         '            if groupId == .root {\n                defaultTitle = presentationData.strings.DialogList_Title\n',
-        '            if groupId == .root {\n                // YepGram: 👻 while ghost mode is on.\n'
-        '                defaultTitle = presentationData.strings.DialogList_Title + (YepGramSettings.isGhostModeOn(accountId: self.context.account.peerId.id._internalGetInt64Value()) ? " 👻" : "")\n')
+        '            if groupId == .root {\n                // YepGram: account tag and 👻 in title.\n'
+        '                let yepGramAccountId = self.context.account.peerId.id._internalGetInt64Value()\n'
+        '                let yepGramTag = YepGramSettings.accountLabel(accountId: yepGramAccountId)\n'
+        '                let yepGramTagText = yepGramTag.isEmpty ? "" : " [\\(yepGramTag)]"\n'
+        '                let yepGramGhostText = YepGramSettings.isGhostModeOn(accountId: yepGramAccountId) ? " 👻" : ""\n'
+        '                defaultTitle = presentationData.strings.DialogList_Title + yepGramTagText + yepGramGhostText\n')
 
 
 def message_ids_in_menu(root):
@@ -918,7 +923,7 @@ def presence_account_id(root):
 def accounts_screen(root):
     path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
     replace(root, path, '    case yepAccount\n    case trending\n', '    case yepAccount\n    case yepAccountList\n    case yepBackground\n    case trending\n')
-    replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n}')
+    replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n    case yepQuickAccountSwipe\n}')
 
     # Categories: Accounts lists the accounts; each opens its own screen (notifications and ghost mode).
     replace(root, path, '    case other\n\n    func title(_ lang: String) -> String {\n', '    case other\n    case accountDetails\n\n    func title(_ lang: String) -> String {\n')
@@ -940,9 +945,21 @@ def accounts_screen(root):
         '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "ЭТОТ АККАУНТ", "THIS ACCOUNT"), badge: nil))\n',
         '    entries.append(.header(id: id.count, section: .yepAccountList, text: yepGramText(lang, "АККАУНТЫ", "ACCOUNTS"), badge: nil))\n'
         '    for (listedAccountId, listedAccountName) in accounts {\n'
-        '        entries.append(.action(id: id.count, section: .yepAccountList, actionType: AnyHashable(listedAccountId), text: listedAccountName.isEmpty ? "ID \\(listedAccountId)" : listedAccountName, kind: .generic))\n'
+        '        let yepGramTag = YepGramSettings.accountLabel(accountId: listedAccountId)\n'
+        '        let yepGramDisplayName = yepGramTag.isEmpty ? (listedAccountName.isEmpty ? "ID \\(listedAccountId)" : listedAccountName) : "[\\(yepGramTag)] \\(listedAccountName)"\n'
+        '        entries.append(.action(id: id.count, section: .yepAccountList, actionType: AnyHashable(listedAccountId), text: yepGramDisplayName, kind: .generic))\n'
         '    }\n'
-        '    entries.append(.notice(id: id.count, section: .yepAccountList, text: yepGramText(lang, "Нажмите на аккаунт, чтобы настроить для него уведомления и режим призрака.", "Tap an account to set up its notifications and ghost mode.")))\n'
+        '    entries.append(.notice(id: id.count, section: .yepAccountList, text: yepGramText(lang, "Нажмите на аккаунт, чтобы настроить для него метку, уведомления и режим призрака.", "Tap an account to set up its tag, notifications and ghost mode.")))\n'
+        '    \n'
+        '    entries.append(.header(id: id.count, section: .yepAccountList, text: yepGramText(lang, "БЫСТРЫЕ ЖЕСТЫ", "QUICK GESTURES"), badge: nil))\n'
+        '    entries.append(.toggle(id: id.count, section: .yepAccountList, settingName: .yepQuickAccountSwipe, value: YepGramSettings.quickAccountSwipe, text: yepGramText(lang, "Свайп по панели для смены аккаунта", "Swipe tab bar to switch account"), enabled: true))\n'
+        '    entries.append(.notice(id: id.count, section: .yepAccountList, text: yepGramText(lang, "Свайп влево или вправо по нижней панели вкладок переключает между аккаунтами.", "Swipe left or right along the bottom tab bar to switch between accounts.")))\n'
+        '    \n'
+        '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "МЕТКА АККАУНТА", "ACCOUNT TAG"), badge: nil))\n'
+        '    let yepGramCurrentTag = YepGramSettings.accountLabel(accountId: accountId)\n'
+        '    let yepGramTagActionText = yepGramCurrentTag.isEmpty ? yepGramText(lang, "Задать метку (например: Работа, Проект)", "Set tag (e.g. Work, Project)") : "[\\(yepGramCurrentTag)] " + yepGramText(lang, "Изменить метку", "Change tag")\n'
+        '    entries.append(.action(id: id.count, section: .yepAccount, actionType: AnyHashable("yepEditAccountLabel"), text: yepGramTagActionText, kind: .generic))\n'
+        '    entries.append(.notice(id: id.count, section: .yepAccount, text: yepGramText(lang, "Метка отображается в заголовке чатов и меню аккаунтов, чтобы вы всегда знали, с какого аккаунта пишете.", "The tag appears in the chat list title and account switcher so you always know which account is active.")))\n'
         '    \n'
         '    entries.append(.header(id: id.count, section: .yepAccount, text: yepGramText(lang, "УВЕДОМЛЕНИЯ", "NOTIFICATIONS"), badge: nil))\n')
     replace(root, path,
@@ -966,6 +983,12 @@ def accounts_screen(root):
     replace(root, path, toggle, toggle +
         '        case .yepBackgroundMode:\n'
         '            YepGramSettings.backgroundMode = value\n'
+        '            if value {\n'
+        '                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound, .carPlay]) { _, _ in }\n'
+        '            }\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepQuickAccountSwipe:\n'
+        '            YepGramSettings.quickAccountSwipe = value\n'
         '            simplePromise.set(true)\n')
     replace(root, path,
         '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n',
@@ -980,6 +1003,22 @@ def accounts_screen(root):
         '    let yepGramAccountNames = Atomic<[Int64: String]>(value: [:])\n')
     replace(root, path, '    }, searchInput: { searchQuery in\n',
         '    }, action: { actionType in\n'
+        '        if let str = actionType.base as? String, str == "yepEditAccountLabel" {\n'
+        '            let isRussian = presentationData.strings.baseLanguageCode == "ru"\n'
+        '            let alert = UIAlertController(title: isRussian ? "Метка аккаунта" : "Account Tag", message: isRussian ? "Введите метку для этого аккаунта (например: Работа, Проект, Саппорт):" : "Enter a label for this account (e.g. Work, Project, Support):", preferredStyle: .alert)\n'
+        '            alert.addTextField { tf in\n'
+        '                tf.text = YepGramSettings.accountLabel(accountId: yepGramTargetAccountId)\n'
+        '                tf.placeholder = isRussian ? "Метка" : "Label"\n'
+        '            }\n'
+        '            alert.addAction(UIAlertAction(title: presentationData.strings.Common_Cancel, style: .cancel, handler: nil))\n'
+        '            alert.addAction(UIAlertAction(title: presentationData.strings.Common_OK, style: .default, handler: { _ in\n'
+        '                let newTag = alert.textFields?.first?.text ?? ""\n'
+        '                YepGramSettings.setAccountLabel(accountId: yepGramTargetAccountId, newTag)\n'
+        '                simplePromise.set(true)\n'
+        '            }))\n'
+        '            context.sharedContext.mainWindow?.viewController?.present(alert, animated: true, completion: nil)\n'
+        '            return\n'
+        '        }\n'
         '        guard let listedAccountId = actionType.base as? Int64 else {\n'
         '            return\n'
         '        }\n'
@@ -1014,57 +1053,110 @@ def accounts_screen(root):
 
 
 def background_mode(root):
-    # Keepalive: Telegram's own (disabled) silent renderer, switched on by the setting and kept on a
-    # category that really keeps the app running in the background.
+    # Keepalive: silent WAV loop through AVAudioPlayer actively feeds CoreAudio so iOS keeps the app awake.
     path = 'submodules/TelegramUI/Sources/SharedWakeupManager.swift'
     replace(root, path, 'import TelegramPresentationData\n', 'import TelegramPresentationData\nimport SGSimpleSettings\n')
+    replace(root, path,
+        '    private var silenceAudioRenderer: MediaPlayerAudioRenderer?\n',
+        '    private var silenceAudioRenderer: MediaPlayerAudioRenderer?\n    private var yepGramSilencePlayer: AVAudioPlayer?\n')
     call = '        self.updateAccounts(hasTasks: hasTasksForBackgroundExtension, endTaskAfterTransactionsComplete: endTaskAfterTransactionsComplete)\n'
     replace(root, path, call,
         '        // YepGram background mode: play silence while in the background so the app keeps running and connected.\n'
-        '        // It yields to the app\'s own audio (voice messages, calls) and comes back when that ends.\n'
+        '        // An infinite silent WAV loop through AVAudioPlayer actively feeds CoreAudio so iOS never suspends the process.\n'
+        '        // It yields to the app\'s own audio (voice messages, calls) and resumes when that ends.\n'
         '        if !self.inForeground && !self.hasActiveAudioSession && YepGramSettings.backgroundMode {\n'
-        '            if self.silenceAudioRenderer == nil {\n'
+        '            if self.yepGramSilencePlayer == nil {\n'
         '                let audioSession = AVAudioSession.sharedInstance()\n'
-        '                let silenceAudioRenderer = MediaPlayerAudioRenderer(\n'
-        '                    audioSession: .custom({ control in\n'
-        '                        let _ = try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])\n'
-        '                        let _ = try? audioSession.setActive(true)\n'
-        '                        control.activate()\n'
-        '                        return EmptyDisposable\n'
-        '                    }),\n'
-        '                    forAudioVideoMessage: false,\n'
-        '                    playAndRecord: false,\n'
-        '                    useVoiceProcessingMode: false,\n'
-        '                    soundMuted: false,\n'
-        '                    ambient: false,\n'
-        '                    mixWithOthers: true,\n'
-        '                    forceAudioToSpeaker: false,\n'
-        '                    baseRate: 1.0,\n'
-        '                    audioLevelPipe: ValuePipe(),\n'
-        '                    updatedRate: {},\n'
-        '                    audioPaused: {}\n'
-        '                )\n'
-        '                self.silenceAudioRenderer = silenceAudioRenderer\n'
-        '                silenceAudioRenderer.start()\n'
+        '                let _ = try? audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])\n'
+        '                let _ = try? audioSession.setActive(true)\n'
+        '                if let player = try? AVAudioPlayer(data: makeYepGramSilentWav()) {\n'
+        '                    player.numberOfLoops = -1\n'
+        '                    player.volume = 0.01\n'
+        '                    player.prepareToPlay()\n'
+        '                    player.play()\n'
+        '                    self.yepGramSilencePlayer = player\n'
+        '                }\n'
         '            }\n'
-        '        } else if let silenceAudioRenderer = self.silenceAudioRenderer {\n'
-        '            self.silenceAudioRenderer = nil\n'
-        '            silenceAudioRenderer.stop()\n'
+        '        } else if let player = self.yepGramSilencePlayer {\n'
+        '            self.yepGramSilencePlayer = nil\n'
+        '            player.stop()\n'
+        '            let _ = try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])\n'
         '        }\n'
         '        \n' + call)
     # While it runs, every account keeps receiving updates.
     replace(root, path,
+        '|| self.silenceAudioRenderer != nil {\n',
+        '|| self.silenceAudioRenderer != nil || self.yepGramSilencePlayer != nil {\n')
+    replace(root, path,
         '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) {\n',
-        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) || self.silenceAudioRenderer != nil {\n')
+        '                if (self.inForeground && primary) || !tasks.isEmpty || (self.activeExplicitExtensionTimer != nil && primary) || self.yepGramSilencePlayer != nil {\n')
+    replace(root, path,
+        '                account.shouldExplicitelyKeepWorkerConnections.set(.single(tasks.backgroundAudio || tasks.backgroundLocation || tasks.importantTasks.pendingStoryCount != 0 || tasks.importantTasks.pendingMessageCount != 0))\n',
+        '                account.shouldExplicitelyKeepWorkerConnections.set(.single(tasks.backgroundAudio || tasks.backgroundLocation || tasks.importantTasks.pendingStoryCount != 0 || tasks.importantTasks.pendingMessageCount != 0 || self.yepGramSilencePlayer != nil))\n')
+    text = read(root, path)
+    write(root, path, text.rstrip('\n') + '\n\n'
+        '// Minimal 1-second RIFF PCM WAV buffer (8000Hz, 16-bit mono) of digital silence.\n'
+        'private func makeYepGramSilentWav() -> Data {\n'
+        '    let sampleRate: Int32 = 8000\n'
+        '    let numChannels: Int16 = 1\n'
+        '    let bitsPerSample: Int16 = 16\n'
+        '    let byteRate: Int32 = sampleRate * Int32(numChannels) * Int32(bitsPerSample / 8)\n'
+        '    let blockAlign: Int16 = numChannels * (bitsPerSample / 8)\n'
+        '    let numSamples = Int(sampleRate)\n'
+        '    let dataSize = Int32(numSamples * Int(blockAlign))\n'
+        '    let chunkSize = 36 + dataSize\n'
+        '    var data = Data()\n'
+        '    data.append(contentsOf: [0x52, 0x49, 0x46, 0x46])\n'
+        '    var cSize = chunkSize.littleEndian\n'
+        '    withUnsafeBytes(of: &cSize) { data.append(contentsOf: $0) }\n'
+        '    data.append(contentsOf: [0x57, 0x41, 0x56, 0x45])\n'
+        '    data.append(contentsOf: [0x66, 0x6d, 0x74, 0x20])\n'
+        '    var subchunk1Size: Int32 = 16.littleEndian\n'
+        '    withUnsafeBytes(of: &subchunk1Size) { data.append(contentsOf: $0) }\n'
+        '    var audioFormat: Int16 = 1.littleEndian\n'
+        '    withUnsafeBytes(of: &audioFormat) { data.append(contentsOf: $0) }\n'
+        '    var channels = numChannels.littleEndian\n'
+        '    withUnsafeBytes(of: &channels) { data.append(contentsOf: $0) }\n'
+        '    var sRate = sampleRate.littleEndian\n'
+        '    withUnsafeBytes(of: &sRate) { data.append(contentsOf: $0) }\n'
+        '    var bRate = byteRate.littleEndian\n'
+        '    withUnsafeBytes(of: &bRate) { data.append(contentsOf: $0) }\n'
+        '    var bAlign = blockAlign.littleEndian\n'
+        '    withUnsafeBytes(of: &bAlign) { data.append(contentsOf: $0) }\n'
+        '    var bPerSample = bitsPerSample.littleEndian\n'
+        '    withUnsafeBytes(of: &bPerSample) { data.append(contentsOf: $0) }\n'
+        '    data.append(contentsOf: [0x64, 0x61, 0x74, 0x61])\n'
+        '    var dSize = dataSize.littleEndian\n'
+        '    withUnsafeBytes(of: &dSize) { data.append(contentsOf: $0) }\n'
+        '    data.append(Data(count: Int(dataSize)))\n'
+        '    return data\n'
+        '}\n')
 
-    # New messages while in the background become local notifications.
+    # Notification permission & presentation in AppDelegate
+    path = 'submodules/TelegramUI/Sources/AppDelegate.swift'
+    replace(root, path,
+        '                    var authorizeNotifications = true\n                    if #available(iOS 10.0, *) {\n                        authorizeNotifications = false\n                    }\n                    self.registerForNotifications(context: context.context, authorize: authorizeNotifications)\n',
+        '                    // YepGram: unconditionally request notification authorization so local notifications work on sideloaded builds.\n                    let authorizeNotifications = true\n                    self.registerForNotifications(context: context.context, authorize: authorizeNotifications)\n')
+    replace(root, path,
+        '    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {\n',
+        '    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {\n'
+        '        if notification.request.identifier.hasPrefix("yepgram-") {\n'
+        '            if #available(iOS 14.0, *) {\n'
+        '                completionHandler([.banner, .sound, .badge, .list])\n'
+        '            } else {\n'
+        '                completionHandler([.alert, .sound, .badge])\n'
+        '            }\n'
+        '            return\n'
+        '        }\n')
+
+    # New messages while in the background become rich local notifications.
     path = 'submodules/TelegramUI/Sources/ApplicationContext.swift'
     replace(root, path, 'import SGSimpleSettings\n', 'import SGSimpleSettings\nimport UserNotifications\n')
     anchor = '            if let strongSelf = self, let (messages, _, notify, threadData) = messageList.last, let firstMessage = messages.first {\n'
     replace(root, path, anchor, anchor +
         '                // YepGram background mode: no pushes on a sideloaded build, so notify locally.\n'
         '                if UIApplication.shared.applicationState != .active && YepGramSettings.backgroundMode && notify {\n'
-        '                    yepGramPostLocalNotification(message: firstMessage, count: messages.count)\n'
+        '                    yepGramPostLocalNotification(message: firstMessage, count: messages.count, accountId: strongSelf.context.account.id.rawValue)\n'
         '                    return\n'
         '                }\n')
     text = read(root, path)
@@ -1072,7 +1164,14 @@ def background_mode(root):
         'private func yepGramPeerTitle(_ peer: EnginePeer) -> String {\n'
         '    switch peer {\n'
         '    case let .user(user):\n'
-        '        return [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")\n'
+        '        let parts = [user.firstName, user.lastName].compactMap { $0 }.filter { !$0.isEmpty }\n'
+        '        if !parts.isEmpty {\n'
+        '            return parts.joined(separator: " ")\n'
+        '        }\n'
+        '        if let phone = user.phone, !phone.isEmpty {\n'
+        '            return phone\n'
+        '        }\n'
+        '        return ""\n'
         '    case let .legacyGroup(group):\n'
         '        return group.title\n'
         '    case let .channel(channel):\n'
@@ -1083,23 +1182,85 @@ def background_mode(root):
         '        return ""\n'
         '    }\n'
         '}\n\n'
-        '// YepGram background mode: a local notification for a new message.\n'
-        'func yepGramPostLocalNotification(message: EngineRawMessage, count: Int) {\n'
+        '// YepGram background mode: a rich local notification for a new message.\n'
+        'func yepGramPostLocalNotification(message: EngineRawMessage, count: Int, accountId: Int64? = nil) {\n'
         '    let content = UNMutableNotificationContent()\n'
-        '    let authorTitle = message.author.flatMap { yepGramPeerTitle(EnginePeer($0)) } ?? ""\n'
-        '    if let chatPeer = message.peers[message.id.peerId], !(chatPeer is TelegramUser) {\n'
-        '        let chatTitle = yepGramPeerTitle(EnginePeer(chatPeer))\n'
-        '        content.title = authorTitle.isEmpty || authorTitle == chatTitle ? chatTitle : chatTitle + ": " + authorTitle\n'
+        '    let chatPeer = message.peers[message.id.peerId].map(EnginePeer.init)\n'
+        '    let authorPeer = message.author.map(EnginePeer.init)\n'
+        '    let chatTitle = chatPeer.map(yepGramPeerTitle) ?? ""\n'
+        '    let authorTitle = authorPeer.map(yepGramPeerTitle) ?? ""\n'
+        '    let isUserChat: Bool\n'
+        '    if let chatPeer = chatPeer, case .user = chatPeer {\n'
+        '        isUserChat = true\n'
         '    } else {\n'
-        '        content.title = authorTitle\n'
+        '        isUserChat = false\n'
         '    }\n'
-        '    var body = message.text.isEmpty ? "📎" : message.text\n'
+        '    if isUserChat {\n'
+        '        let name = !authorTitle.isEmpty ? authorTitle : chatTitle\n'
+        '        content.title = !name.isEmpty ? name : "Сообщение"\n'
+        '    } else {\n'
+        '        if !chatTitle.isEmpty {\n'
+        '            if !authorTitle.isEmpty && authorTitle != chatTitle {\n'
+        '                content.title = "\\(chatTitle): \\(authorTitle)"\n'
+        '            } else {\n'
+        '                content.title = chatTitle\n'
+        '            }\n'
+        '        } else {\n'
+        '            content.title = !authorTitle.isEmpty ? authorTitle : "Сообщение"\n'
+        '        }\n'
+        '    }\n'
+        '    var body = message.text\n'
+        '    if body.isEmpty {\n'
+        '        for media in message.media {\n'
+        '            if media is TelegramMediaImage {\n'
+        '                body = "📷 Фото"\n'
+        '                break\n'
+        '            } else if let file = media as? TelegramMediaFile {\n'
+        '                if file.isVoice {\n'
+        '                    body = "🎤 Голосовое сообщение"\n'
+        '                } else if file.isInstantVideo {\n'
+        '                    body = "📹 Видеосообщение"\n'
+        '                } else if file.isVideo {\n'
+        '                    body = "📹 Видео"\n'
+        '                } else if file.isSticker {\n'
+        '                    body = "Стикер"\n'
+        '                } else if file.isAnimated {\n'
+        '                    body = "GIF"\n'
+        '                } else {\n'
+        '                    body = "📎 " + (file.fileName ?? "Файл")\n'
+        '                }\n'
+        '                break\n'
+        '            } else if media is TelegramMediaContact {\n'
+        '                body = "👤 Контакт"\n'
+        '                break\n'
+        '            } else if media is TelegramMediaMap {\n'
+        '                body = "📍 Геолокация"\n'
+        '                break\n'
+        '            } else if media is TelegramMediaPoll {\n'
+        '                body = "📊 Опрос"\n'
+        '                break\n'
+        '            }\n'
+        '        }\n'
+        '    }\n'
+        '    if body.isEmpty {\n'
+        '        body = "Сообщение"\n'
+        '    }\n'
         '    if count > 1 {\n'
         '        body += " (+\\(count - 1))"\n'
         '    }\n'
         '    content.body = body\n'
         '    content.sound = .default\n'
+        '    content.categoryIdentifier = "c"\n'
         '    content.threadIdentifier = "\\(message.id.peerId.toInt64())"\n'
+        '    var userInfo: [AnyHashable: Any] = [\n'
+        '        "peerId": message.id.peerId.toInt64(),\n'
+        '        "messageId.namespace": message.id.namespace,\n'
+        '        "messageId.id": message.id.id\n'
+        '    ]\n'
+        '    if let accountId = accountId {\n'
+        '        userInfo["accountId"] = accountId\n'
+        '    }\n'
+        '    content.userInfo = userInfo\n'
         '    let request = UNNotificationRequest(identifier: "yepgram-\\(message.id.peerId.toInt64())-\\(message.id.id)", content: content, trigger: nil)\n'
         '    UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)\n'
         '}\n')
@@ -1116,22 +1277,23 @@ def background_all_accounts(root):
         '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n',
         '        // YepGram background mode: local notifications for every account but the primary one.\n'
         '        self.yepGramBackgroundNotificationsDisposable.set((self.activeAccountContexts\n'
-        '        |> mapToSignal { activeAccounts -> Signal<[(EngineRawMessage, Int)], NoError> in\n'
+        '        |> mapToSignal { activeAccounts -> Signal<[(EngineRawMessage, Int, Int64)], NoError> in\n'
         '            let primaryId = activeAccounts.primary?.account.id\n'
         '            let others = activeAccounts.accounts.map { $0.1 }.filter { $0.account.id != primaryId }\n'
         '            return Signal { subscriber in\n'
         '                let disposables = DisposableSet()\n'
         '                for accountContext in others {\n'
-        '                    let accountId = accountContext.account.peerId.id._internalGetInt64Value()\n'
+        '                    let accountRecordId = accountContext.account.id.rawValue\n'
+        '                    let peerIdValue = accountContext.account.peerId.id._internalGetInt64Value()\n'
         '                    disposables.add(accountContext.account.stateManager.notificationMessages.start(next: { list in\n'
-        '                        if YepGramSettings.isInAppNotificationsMuted(accountId: accountId) {\n'
+        '                        if YepGramSettings.isInAppNotificationsMuted(accountId: peerIdValue) {\n'
         '                            return\n'
         '                        }\n'
-        '                        let items = list.compactMap { item -> (EngineRawMessage, Int)? in\n'
+        '                        let items = list.compactMap { item -> (EngineRawMessage, Int, Int64)? in\n'
         '                            guard item.2, let first = item.0.first else {\n'
         '                                return nil\n'
         '                            }\n'
-        '                            return (first, item.0.count)\n'
+        '                            return (first, item.0.count, accountRecordId)\n'
         '                        }\n'
         '                        if !items.isEmpty {\n'
         '                            subscriber.putNext(items)\n'
@@ -1145,12 +1307,99 @@ def background_all_accounts(root):
         '            guard UIApplication.shared.applicationState != .active, YepGramSettings.backgroundMode else {\n'
         '                return\n'
         '            }\n'
-        '            for (message, count) in items {\n'
-        '                yepGramPostLocalNotification(message: message, count: count)\n'
+        '            for (message, count, accountId) in items {\n'
+        '                yepGramPostLocalNotification(message: message, count: count, accountId: accountId)\n'
         '            }\n'
         '        }))\n'
         '        \n'
         '        // MARK: Swiftgram\n        let immediateSGStatusValue = self.immediateSGStatusValue\n')
+
+
+def account_limits(root):
+    # Raise safety threshold from 6 to 500 accounts so new accounts are added without warning dialogs.
+    path = 'submodules/AccountUtils/Sources/AccountUtils.swift'
+    replace(root, path,
+        'public let maximumSafeNumberOfAccounts = 6\n',
+        'public let maximumSafeNumberOfAccounts = 500\n')
+
+
+def account_labels_in_switcher(root):
+    # Display the account tag/label in the account switcher popup menu.
+    path = 'submodules/TelegramUI/Components/PeerInfo/AccountPeerContextItem/Sources/AccountPeerContextItem.swift'
+    replace(root, path,
+        '        let peerTitle = item.peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)\n',
+        '        let rawPeerTitle = item.peer.displayTitle(strings: presentationData.strings, displayOrder: presentationData.nameDisplayOrder)\n'
+        '        let accountTag = UserDefaults.standard.string(forKey: "yepgram.accountLabel.\\(item.account.peerId.id._internalGetInt64Value())") ?? ""\n'
+        '        let peerTitle = accountTag.isEmpty ? rawPeerTitle : "[\\(accountTag)] \\(rawPeerTitle)"\n')
+
+
+def quick_account_swipe(root):
+    path = 'submodules/TelegramUI/Sources/TelegramRootController.swift'
+    replace(root, path,
+        '    private let context: AccountContext\n',
+        '    fileprivate let context: AccountContext\n    private var yepGramSwipeHandler: AnyObject?\n')
+
+    setup_anchor = '        self.rootTabController = tabBarController\n        self.pushViewController(tabBarController, animated: false)\n'
+    replace(root, path, setup_anchor, setup_anchor +
+        '        \n'
+        '        // YepGram: swipe along the bottom tab bar to quickly switch accounts.\n'
+        '        let swipeHandler = YepGramTabBarSwipeHandler(rootController: self)\n'
+        '        swipeHandler.setup(tabBarController: tabBarController)\n'
+        '        self.yepGramSwipeHandler = swipeHandler\n')
+
+    text = read(root, path)
+    write(root, path, text.rstrip('\n') + '\n\n' +
+        '// YepGram: quick account switching via swipe on the bottom tab bar.\n'
+        'private final class YepGramTabBarSwipeHandler: NSObject, UIGestureRecognizerDelegate {\n'
+        '    private weak var rootController: TelegramRootController?\n'
+        '    \n'
+        '    init(rootController: TelegramRootController) {\n'
+        '        self.rootController = rootController\n'
+        '        super.init()\n'
+        '    }\n'
+        '    \n'
+        '    func setup(tabBarController: TabBarControllerImpl) {\n'
+        '        let left = UISwipeGestureRecognizer(target: self, action: #selector(self.handleSwipe(_:)))\n'
+        '        left.direction = .left\n'
+        '        left.delegate = self\n'
+        '        tabBarController.view.addGestureRecognizer(left)\n'
+        '        \n'
+        '        let right = UISwipeGestureRecognizer(target: self, action: #selector(self.handleSwipe(_:)))\n'
+        '        right.direction = .right\n'
+        '        right.delegate = self\n'
+        '        tabBarController.view.addGestureRecognizer(right)\n'
+        '    }\n'
+        '    \n'
+        '    @objc private func handleSwipe(_ gesture: UISwipeGestureRecognizer) {\n'
+        '        guard YepGramSettings.quickAccountSwipe, let root = self.rootController else { return }\n'
+        '        let isLeft = gesture.direction == .left\n'
+        '        let sharedContext = root.context.sharedContext\n'
+        '        let _ = (sharedContext.activeAccountContexts\n'
+        '        |> take(1)\n'
+        '        |> deliverOnMainQueue).startStandalone(next: { activeAccounts in\n'
+        '            let accounts = activeAccounts.accounts\n'
+        '            guard accounts.count > 1, let currentId = activeAccounts.primary?.account.id else {\n'
+        '                return\n'
+        '            }\n'
+        '            guard let currentIndex = accounts.firstIndex(where: { $0.0 == currentId }) else {\n'
+        '                return\n'
+        '            }\n'
+        '            let targetIndex = isLeft ? (currentIndex + 1) % accounts.count : (currentIndex - 1 + accounts.count) % accounts.count\n'
+        '            let targetId = accounts[targetIndex].0\n'
+        '            let generator = UIImpactFeedbackGenerator(style: .medium)\n'
+        '            generator.impactOccurred()\n'
+        '            sharedContext.switchToAccount(id: targetId)\n'
+        '        })\n'
+        '    }\n'
+        '    \n'
+        '    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {\n'
+        '        guard YepGramSettings.quickAccountSwipe else { return false }\n'
+        '        guard let view = gestureRecognizer.view else { return false }\n'
+        '        let location = touch.location(in: view)\n'
+        '        return location.y >= view.bounds.height - 70.0\n'
+        '    }\n'
+        '}\n')
+    print('patched', path, '(quick account swipe)')
 
 
 def main():
@@ -1181,6 +1430,9 @@ def main():
     accounts_screen(root)
     background_mode(root)
     background_all_accounts(root)
+    account_limits(root)
+    account_labels_in_switcher(root)
+    quick_account_swipe(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:

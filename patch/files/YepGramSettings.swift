@@ -91,25 +91,45 @@ public enum YepGramSettings {
     /// Background mode: YepGram keeps its connection after it is sent to the background (by playing
     /// silence) and shows local notifications for new messages, since a sideloaded build gets no pushes.
     public static var backgroundMode: Bool {
-        get { return UserDefaults.standard.object(forKey: "yepgram.backgroundMode") as? Bool ?? false }
+        get { return UserDefaults.standard.object(forKey: "yepgram.backgroundMode") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "yepgram.backgroundMode") }
     }
 
     /// "What's new" is shown once per release; bump the version with each release that has news.
-    public static let whatsNewVersion = "2"
+    public static let whatsNewVersion = "3"
 
     public static func whatsNew(lang: String) -> (title: String, text: String)? {
         if UserDefaults.standard.string(forKey: "yepgram.whatsNewSeen") == YepGramSettings.whatsNewVersion {
             return nil
         }
         if lang == "ru" {
-            return ("Что нового в YepGram", "• Настройки по категориям с поиском\n• Режим призрака: включается долгим нажатием на вкладку «Чаты», 👻 в заголовке, пока он включён\n• «Прочитать после действия»: ответ, реакция или голос отмечают чат прочитанным\n• История изменений сообщений\n• ID чата и сообщения в меню сообщения\n• Инструменты бывшего Swiftgram Pro бесплатно\n• Аккаунты: свой режим призрака и уведомления для каждого аккаунта\n• Работа в фоне: YepGram остаётся на связи после сворачивания и сам показывает уведомления")
+            return ("Что нового в YepGram", "• Мультиаккаунтинг: свайп влево/вправо по нижней панели для мгновенной смены аккаунта\n• Метки аккаунтов: задавайте имя/тег (например: Работа, Саппорт) в настройках аккаунта — метка видна в заголовке чатов и меню\n• Снятие ограничений на количество аккаунтов\n• Настройки по категориям с поиском\n• Режим призрака: 👻 в заголовке, «прочитать после действия»\n• История изменений сообщений\n• ID чата и сообщения в контекстном меню\n• Работа в фоне с локальными уведомлениями")
         }
-        return ("What's new in YepGram", "• Settings in categories, with search\n• Ghost mode: long-press the Chats tab to toggle it, 👻 in the title while it's on\n• Read after action: replying, reacting or voting marks the chat read\n• Message edit history\n• Chat and message IDs in the message menu\n• Former Swiftgram Pro tools, free\n• Accounts: ghost mode and notifications for each account\n• Background mode: YepGram stays connected after you leave it and shows notifications itself")
+        return ("What's new in YepGram", "• Multi-account: swipe left/right along the bottom tab bar to instantly switch accounts\n• Account tags: set custom labels (e.g. Work, Support) in account settings — visible in chat title and account switcher\n• Removed account limits\n• Settings in categories with search\n• Ghost mode: 👻 in title, read after action\n• Message edit history\n• Chat and message IDs in menu\n• Background mode with local notifications")
     }
 
     public static func markWhatsNewSeen() {
         UserDefaults.standard.set(YepGramSettings.whatsNewVersion, forKey: "yepgram.whatsNewSeen")
+    }
+
+    /// Local label/tag for an account (e.g. "Work", "Shop", etc.)
+    public static func accountLabel(accountId: Int64) -> String {
+        return UserDefaults.standard.string(forKey: "yepgram.accountLabel.\(accountId)") ?? ""
+    }
+
+    public static func setAccountLabel(accountId: Int64, _ label: String) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            UserDefaults.standard.removeObject(forKey: "yepgram.accountLabel.\(accountId)")
+        } else {
+            UserDefaults.standard.set(trimmed, forKey: "yepgram.accountLabel.\(accountId)")
+        }
+    }
+
+    /// Swipe along the bottom tab bar to switch accounts.
+    public static var quickAccountSwipe: Bool {
+        get { return UserDefaults.standard.object(forKey: "yepgram.quickAccountSwipe") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "yepgram.quickAccountSwipe") }
     }
 
     /// Edited messages keep their earlier texts, viewable from the message menu.
