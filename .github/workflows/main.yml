@@ -56,7 +56,14 @@ jobs:
       - name: Install Metal Toolchain
         run: |
           # Since Xcode 26 the Metal compiler is a separate download; the shaders fail without it.
-          sudo xcodebuild -downloadComponent MetalToolchain
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i to download Metal Toolchain..."
+            if sudo xcodebuild -downloadComponent MetalToolchain; then
+              break
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
           xcrun metal --version
 
       - name: Clone Swiftgram with submodules
