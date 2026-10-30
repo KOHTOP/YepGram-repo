@@ -460,7 +460,7 @@ def yepgram_settings_ui(root):
     replace(root, path, '    case search\n    case trending\n',
         '    case search\n    case yepCategories\n    case yepLinks\n    case yepGhost\n    case yepDeleted\n    case yepAccount\n    case trending\n')
     replace(root, path, '    case hideAccountInNotifications\n}',
-        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n    case yepAccountInAppNotifications\n    case yepAllowProtectedScreenshots\n    case yepAllowProtectedForwarding\n    case yepKeepDisappearingMedia\n}')
+        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n    case yepAccountInAppNotifications\n}')
     replace(root, path, '    case contentSettings\n    case languageSettings\n}',
         '    case contentSettings\n    case languageSettings\n'
         '    case yepCategoryYepGram\n    case yepCategoryAccounts\n    case yepCategoryTools\n    case yepCategoryGeneral\n'
@@ -932,7 +932,7 @@ def presence_account_id(root):
 def accounts_screen(root):
     path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
     replace(root, path, '    case yepAccount\n    case trending\n', '    case yepAccount\n    case yepAccountList\n    case yepBackground\n    case yepProtectedContent\n    case trending\n')
-    replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n    case yepQuickAccountSwipe\n}')
+    replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n    case yepQuickAccountSwipe\n    case yepAllowProtectedScreenshots\n    case yepAllowProtectedForwarding\n    case yepKeepDisappearingMedia\n}')
 
     # Categories: Accounts lists the accounts; each opens its own screen (notifications and ghost mode).
     replace(root, path, '    case other\n\n    func title(_ lang: String) -> String {\n', '    case other\n    case accountDetails\n\n    func title(_ lang: String) -> String {\n')
@@ -1442,8 +1442,8 @@ def content_access_and_screenshot_bypass(root):
     # 3. ChatControllerNode historyNodeContainer and titleAccessoryPanelContainer screenshot bypass
     chat_node = 'submodules/TelegramUI/Sources/ChatControllerNode.swift'
     replace(root, chat_node,
-        '        let isSecret = (!bypassCopyProtection && self.chatPresentationInterfaceState.copyProtectionEnabled) || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true',
-        '        let allowScreenshots = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedScreenshots") as? Bool) ?? true\n        let isSecret = !allowScreenshots && ((!bypassCopyProtection && self.chatPresentationInterfaceState.copyProtectionEnabled) || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true)')
+        '        let isSecret = self.chatPresentationInterfaceState.copyProtectionEnabled || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true',
+        '        let allowScreenshots = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedScreenshots") as? Bool) ?? true\n        let isSecret = !allowScreenshots && (self.chatPresentationInterfaceState.copyProtectionEnabled || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true)')
 
     # 4. EnqueueMessage forwarding protection bypass (clone copy instead of server forwardMessages)
     enqueue_msg = 'submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift'
