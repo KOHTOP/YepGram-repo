@@ -1400,6 +1400,106 @@ def fast_build_optimizations(root):
         "            shutil.rmtree(artifacts_path + '/DSYMs')\n")
 
 
+def content_access_and_screenshot_bypass(root):
+    # 1. Global screenshot prevention bypass in UIKitUtils.m
+    uikit_utils = 'submodules/UIKitRuntimeUtils/Source/UIKitRuntimeUtils/UIKitUtils.m'
+    replace(root, uikit_utils,
+        'void setLayerDisableScreenshots(CALayer * _Nonnull layer, bool disableScreenshots) {\n    static UITextField *textField = nil;',
+        'void setLayerDisableScreenshots(CALayer * _Nonnull layer, bool disableScreenshots) {\n    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"allowProtectedChannelScreenshots"]) {\n        disableScreenshots = false;\n    }\n    static UITextField *textField = nil;')
+
+    # 2. MediaPlayerNode video capture bypass
+    media_player = 'submodules/MediaPlayer/Sources/MediaPlayerNode.swift'
+    replace(root, media_player,
+        '                    if #available(iOS 13.0, *) {\n                        videoLayer.preventsCapture = captureProtected\n                    }',
+        '                    if #available(iOS 13.0, *) {\n                        let bypassProtectedScreenshots = UserDefaults.standard.bool(forKey: "allowProtectedChannelScreenshots")\n                        videoLayer.preventsCapture = bypassProtectedScreenshots ? false : captureProtected\n                    }')
+
+    # 3. EnqueueMessage forwarding protection bypass (clone copy instead of server forwardMessages)
+    enqueue_msg = 'submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift'
+    reupload_old = ('private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId) -> Message? {\n'
+                    '    if let message = transaction.getMessage(id) {\n'
+                    '        if message.id.namespace != Namespaces.Message.Cloud && !Namespaces.Message.allEphemeral.contains(message.id.namespace) {\n'
+                    '            return message\n'
+                    '        } else {\n'
+                    '            return nil\n'
+                    '        }\n'
+                    '    } else {\n'
+                    '        return nil\n'
+                    '    }\n'
+                    '}')
+    reupload_new = ('private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId) -> Message? {\n'
+                    '    if let message = transaction.getMessage(id) {\n'
+                    '        let isProtected = message.isCopyProtected() || (message.peers[message.id.peerId] as? TelegramChannel)?.flags.contains(.messagesCopyProtectionEnabled) == true\n'
+                    '        let bypassProtectedForwarding = UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n'
+                    '        if message.id.namespace != Namespaces.Message.Cloud && !Namespaces.Message.allEphemeral.contains(message.id.namespace) {\n'
+                    '            return message\n'
+                    '        } else if bypassProtectedForwarding && isProtected {\n'
+                    '            return message\n'
+                    '        } else {\n'
+                    '            return nil\n'
+                    '        }\n'
+                    '    } else {\n'
+                    '        return nil\n'
+                    '    }\n'
+                    '}')
+    replace(root, enqueue_msg, reupload_old, reupload_new)
+
+    forward_handler_old = ('            case let .forward(sourceId, threadId, grouping, forwardAttributes, _):\n'
+                           '                if let sourceMessage = forwardedMessageToBeReuploaded(transaction: transaction, id: sourceId) {\n'
+                           '                    var mediaReference: AnyMediaReference?\n'
+                           '                    if sourceMessage.id.peerId.namespace == Namespaces.Peer.SecretChat {\n'
+                           '                        if let media = sourceMessage.media.first {\n'
+                           '                            mediaReference = .standalone(media: media)\n'
+                           '                        }\n'
+                           '                    }')
+    forward_handler_new = ('            case let .forward(sourceId, threadId, grouping, forwardAttributes, _):\n'
+                           '                if let sourceMessage = forwardedMessageToBeReuploaded(transaction: transaction, id: sourceId) {\n'
+                           '                    var mediaReference: AnyMediaReference?\n'
+                           '                    if sourceMessage.id.peerId.namespace == Namespaces.Peer.SecretChat {\n'
+                           '                        if let media = sourceMessage.media.first {\n'
+                           '                            mediaReference = .standalone(media: media)\n'
+                           '                        }\n'
+                           '                    } else if let media = sourceMessage.media.first {\n'
+                           '                        mediaReference = .message(message: MessageReference(sourceMessage), media: media)\n'
+                           '                    }')
+    replace(root, enqueue_msg, forward_handler_old, forward_handler_new)
+
+    # 4. PendingMessageManager forcedReupload on restricted RPC errors
+    pending_mgr = 'submodules/TelegramCore/Sources/State/PendingMessageManager.swift'
+    replace(root, pending_mgr,
+        'if error.errorDescription.hasPrefix("FILEREF_INVALID") || error.errorDescription.hasPrefix("FILE_REFERENCE_") {',
+        'if error.errorDescription.hasPrefix("FILEREF_INVALID") || error.errorDescription.hasPrefix("FILE_REFERENCE_") || error.errorDescription.hasPrefix("MEDIA_RESTRICTED") || error.errorDescription.hasPrefix("CHAT_FORWARDS_RESTRICTED") {')
+
+    # 5. ChatInterfaceStateContextMenus unlock copy & media saving
+    context_menus = 'submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift'
+    replace(root, context_menus,
+        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n    let replacementMessage = message.activeEphemeralReplacementMessage',
+        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding\n    let replacementMessage = message.activeEphemeralReplacementMessage')
+
+    replace(root, context_menus,
+        '        let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {',
+        '        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {')
+
+    replace(root, context_menus,
+        '            if chatPresentationInterfaceState.copyProtectionEnabled {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy',
+        '            if chatPresentationInterfaceState.copyProtectionEnabled && !SGSimpleSettings.shared.allowProtectedMessageForwarding {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
+
+    # 6. ChatMessageTextBubbleContentNode text selection copy
+    text_bubble = 'submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift'
+    replace(root, text_bubble,
+        '                let enableCopy = (!item.associatedData.isCopyProtectionEnabled && !item.message.isCopyProtected()) || item.message.id.peerId.isVerificationCodes\n                textSelectionNode.enableCopy = enableCopy',
+        '                let bypassProtectedForwarding = UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n                let enableCopy = (!item.associatedData.isCopyProtectionEnabled && !item.message.isCopyProtected()) || item.message.id.peerId.isVerificationCodes || bypassProtectedForwarding\n                textSelectionNode.enableCopy = enableCopy')
+
+    # 7. ChatController gallery and quote swipe
+    chat_ctrl = 'submodules/TelegramUI/Sources/ChatController.swift'
+    replace(root, chat_ctrl,
+        '                standalone: standalone,\n                copyProtected: self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled,\n                reverseMessageGalleryOrder: false,',
+        '                standalone: standalone,\n                copyProtected: (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled) && !(SGSimpleSettings.shared.allowProtectedChannelScreenshots || SGSimpleSettings.shared.allowProtectedMessageForwarding),\n                reverseMessageGalleryOrder: false,')
+
+    replace(root, chat_ctrl,
+        '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) {\n                    return .none\n                }',
+        '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding {\n                    return .none\n                }')
+
+
 def main():
     if len(sys.argv) != 2:
         print(__doc__)
@@ -1432,6 +1532,7 @@ def main():
     account_labels_in_switcher(root)
     quick_account_swipe(root)
     fast_build_optimizations(root)
+    content_access_and_screenshot_bypass(root)
     if failures:
         print('\nYepGram patch FAILED:')
         for failure in failures:
