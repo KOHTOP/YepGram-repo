@@ -1507,9 +1507,25 @@ def content_access_and_screenshot_bypass(root):
         '            let bypassForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n            if chatPresentationInterfaceState.copyProtectionEnabled && !bypassForwarding {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
 
     # Allow forward in chatAvailableMessageActionsImpl
-    actions_impl_old = 'func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: EnginePeer.Id, messageIds: Set<EngineMessage.Id>, messages: [EngineMessage.Id: EngineRawMessage] = [:], peers: [EnginePeer.Id: EngineRawPeer] = [:], keepUpdated: Bool) -> Signal<ChatAvailableMessageActions, NoError> {\n'
-    actions_impl_new = actions_impl_old + '    let allowProtectedMessageForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n'
+    actions_impl_old = '        var disableDelete = false\n        var isCopyProtected = false'
+    actions_impl_new = '        var disableDelete = false\n        let allowProtectedForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n        var isCopyProtected = false'
     replace(root, context_menus, actions_impl_old, actions_impl_new)
+
+    replace(root, context_menus,
+        'if !isForwardingDisabled && !message.containsSecretMedia && !isAction && !isCopyProtected && !isShareProtected && !(message.flags.isSending || message.flags.contains(.Failed)) {',
+        'if !isForwardingDisabled && !message.containsSecretMedia && !isAction && (!isCopyProtected || allowProtectedForwarding) && !isShareProtected && !(message.flags.isSending || message.flags.contains(.Failed)) {')
+
+    replace(root, context_menus,
+        'if message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.isCopyProtected() {',
+        'if message.id.peerId.namespace != Namespaces.Peer.SecretChat && (!message.isCopyProtected() || allowProtectedForwarding) {')
+
+    replace(root, context_menus,
+        'if !isAction && !message.isCopyProtected() && !isShareProtected {',
+        'if !isAction && (!message.isCopyProtected() || allowProtectedForwarding) && !isShareProtected {')
+
+    replace(root, context_menus,
+        'if !isScheduled && message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.containsSecretMedia && !isAction && !message.id.peerId.isReplies && !message.isCopyProtected() && !isShareProtected {',
+        'if !isScheduled && message.id.peerId.namespace != Namespaces.Peer.SecretChat && !message.containsSecretMedia && !isAction && !message.id.peerId.isReplies && (!message.isCopyProtected() || allowProtectedForwarding) && !isShareProtected {')
 
     # 7. ChatMessageTextBubbleContentNode text selection copy
     text_bubble = 'submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift'
