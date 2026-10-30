@@ -1428,7 +1428,7 @@ def content_access_and_screenshot_bypass(root):
                     '}')
     reupload_new = ('private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId) -> Message? {\n'
                     '    if let message = transaction.getMessage(id) {\n'
-                    '        let isProtected = message.isCopyProtected() || (message.peers[message.id.peerId] as? TelegramChannel)?.flags.contains(.messagesCopyProtectionEnabled) == true\n'
+                    '        let isProtected = message.isCopyProtected() || (transaction.getPeer(message.id.peerId)?.isCopyProtectionEnabled == true)\n'
                     '        let bypassProtectedForwarding = UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n'
                     '        if message.id.namespace != Namespaces.Message.Cloud && !Namespaces.Message.allEphemeral.contains(message.id.namespace) {\n'
                     '            return message\n'
