@@ -1473,15 +1473,15 @@ def content_access_and_screenshot_bypass(root):
     context_menus = 'submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift'
     replace(root, context_menus,
         '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n    let replacementMessage = message.activeEphemeralReplacementMessage',
-        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding\n    let replacementMessage = message.activeEphemeralReplacementMessage')
+        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n    let replacementMessage = message.activeEphemeralReplacementMessage')
 
     replace(root, context_menus,
         '        let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {',
-        '        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {')
+        '        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {')
 
     replace(root, context_menus,
         '            if chatPresentationInterfaceState.copyProtectionEnabled {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy',
-        '            if chatPresentationInterfaceState.copyProtectionEnabled && !SGSimpleSettings.shared.allowProtectedMessageForwarding {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
+        '            if chatPresentationInterfaceState.copyProtectionEnabled && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding") {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
 
     # 6. ChatMessageTextBubbleContentNode text selection copy
     text_bubble = 'submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift'
@@ -1493,11 +1493,11 @@ def content_access_and_screenshot_bypass(root):
     chat_ctrl = 'submodules/TelegramUI/Sources/ChatController.swift'
     replace(root, chat_ctrl,
         '                standalone: standalone,\n                copyProtected: self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled,\n                reverseMessageGalleryOrder: false,',
-        '                standalone: standalone,\n                copyProtected: (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled) && !(SGSimpleSettings.shared.allowProtectedChannelScreenshots || SGSimpleSettings.shared.allowProtectedMessageForwarding),\n                reverseMessageGalleryOrder: false,')
+        '                standalone: standalone,\n                copyProtected: (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled) && !(UserDefaults.standard.bool(forKey: "allowProtectedChannelScreenshots") || UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")),\n                reverseMessageGalleryOrder: false,')
 
     replace(root, chat_ctrl,
         '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) {\n                    return .none\n                }',
-        '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !SGSimpleSettings.shared.allowProtectedMessageForwarding {\n                    return .none\n                }')
+        '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding") {\n                    return .none\n                }')
 
 
 def main():
