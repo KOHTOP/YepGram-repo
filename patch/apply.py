@@ -460,7 +460,7 @@ def yepgram_settings_ui(root):
     replace(root, path, '    case search\n    case trending\n',
         '    case search\n    case yepCategories\n    case yepLinks\n    case yepGhost\n    case yepDeleted\n    case yepAccount\n    case trending\n')
     replace(root, path, '    case hideAccountInNotifications\n}',
-        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n    case yepAccountInAppNotifications\n}')
+        '    case hideAccountInNotifications\n    case yepGhostNoReadReceipts\n    case yepGhostHideOnline\n    case yepGhostNoTyping\n    case yepKeepDeletedMessages\n    case yepAccountInAppNotifications\n    case yepAllowProtectedScreenshots\n    case yepAllowProtectedForwarding\n    case yepKeepDisappearingMedia\n}')
     replace(root, path, '    case contentSettings\n    case languageSettings\n}',
         '    case contentSettings\n    case languageSettings\n'
         '    case yepCategoryYepGram\n    case yepCategoryAccounts\n    case yepCategoryTools\n    case yepCategoryGeneral\n'
@@ -616,6 +616,15 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
         '            simplePromise.set(true)\n'
         '        case .yepAccountInAppNotifications:\n'
         '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepAllowProtectedScreenshots:\n'
+        '            YepGramSettings.allowProtectedScreenshots = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepAllowProtectedForwarding:\n'
+        '            YepGramSettings.allowProtectedForwarding = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepKeepDisappearingMedia:\n'
+        '            YepGramSettings.keepDisappearingMedia = value\n'
         '            simplePromise.set(true)\n')
 
     links = ('            case .languageSettings:\n'
@@ -922,7 +931,7 @@ def presence_account_id(root):
 
 def accounts_screen(root):
     path = 'Swiftgram/SGSettingsUI/Sources/SGSettingsController.swift'
-    replace(root, path, '    case yepAccount\n    case trending\n', '    case yepAccount\n    case yepAccountList\n    case yepBackground\n    case trending\n')
+    replace(root, path, '    case yepAccount\n    case trending\n', '    case yepAccount\n    case yepAccountList\n    case yepBackground\n    case yepProtectedContent\n    case trending\n')
     replace(root, path, '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n}', '    case yepKeepEditHistory\n    case yepGhostReadAfterAction\n    case yepBackgroundMode\n    case yepQuickAccountSwipe\n}')
 
     # Categories: Accounts lists the accounts; each opens its own screen (notifications and ghost mode).
@@ -930,7 +939,7 @@ def accounts_screen(root):
     replace(root, path, '        case .other:\n            return yepGramText(lang, "Другое", "Other")\n        }\n',
         '        case .other:\n            return yepGramText(lang, "Другое", "Other")\n        case .accountDetails:\n            return yepGramText(lang, "Аккаунт", "Account")\n        }\n')
     replace(root, path, '        case .yepGram:\n            return [.yepGhost, .yepDeleted]\n        case .accounts:\n            return [.yepAccount]\n',
-        '        case .yepGram:\n            return [.yepGhost, .yepDeleted, .yepBackground]\n        case .accounts:\n            return [.yepAccountList]\n')
+        '        case .yepGram:\n            return [.yepGhost, .yepDeleted, .yepBackground, .yepProtectedContent]\n        case .accounts:\n            return [.yepAccountList]\n')
     replace(root, path, '        case .other:\n            return [.content, .other]\n        }\n',
         '        case .other:\n            return [.content, .other]\n        case .accountDetails:\n            return [.yepAccount, .yepGhost]\n        }\n')
     replace(root, path, '        case .other:\n            return .yepCategoryOther\n        }\n',
@@ -976,7 +985,15 @@ def accounts_screen(root):
         '    \n'
         '    entries.append(.header(id: id.count, section: .yepBackground, text: yepGramText(lang, "РАБОТА В ФОНЕ", "BACKGROUND"), badge: nil))\n'
         '    entries.append(.toggle(id: id.count, section: .yepBackground, settingName: .yepBackgroundMode, value: YepGramSettings.backgroundMode, text: yepGramText(lang, "Работать в фоне", "Run in background"), enabled: true))\n'
-        '    entries.append(.notice(id: id.count, section: .yepBackground, text: yepGramText(lang, "YepGram остаётся на связи после сворачивания: сам показывает уведомления о новых сообщениях и сохраняет удалённые сразу. Расходует больше батареи. Не работает, если смахнуть приложение из списка запущенных.", "YepGram stays connected after you leave it: it shows notifications for new messages itself and catches deleted messages right away. Uses more battery. Stops if you swipe the app away.")))\n')
+        '    entries.append(.notice(id: id.count, section: .yepBackground, text: yepGramText(lang, "YepGram остаётся на связи после сворачивания: сам показывает уведомления о новых сообщениях и сохраняет удалённые сразу. Расходует больше батареи. Не работает, если смахнуть приложение из списка запущенных.", "YepGram stays connected after you leave it: it shows notifications for new messages itself and catches deleted messages right away. Uses more battery. Stops if you swipe the app away.")))\n' +
+        '    \n' +
+        '    entries.append(.header(id: id.count, section: .yepProtectedContent, text: yepGramText(lang, "КОНТЕНТ И МЕДИА", "CONTENT & MEDIA"), badge: nil))\n' +
+        '    entries.append(.toggle(id: id.count, section: .yepProtectedContent, settingName: .yepAllowProtectedScreenshots, value: YepGramSettings.allowProtectedScreenshots, text: yepGramText(lang, "Скриншоты везде", "Allow screenshots everywhere"), enabled: true))\n' +
+        '    entries.append(.notice(id: id.count, section: .yepProtectedContent, text: yepGramText(lang, "Разрешает создание скриншотов и запись экрана в защищённых каналах, группах и секретных чатах.", "Allows taking screenshots and screen recordings in copy-protected channels, groups, and secret chats.")))\n' +
+        '    entries.append(.toggle(id: id.count, section: .yepProtectedContent, settingName: .yepAllowProtectedForwarding, value: YepGramSettings.allowProtectedForwarding, text: yepGramText(lang, "Пересылка защищённых сообщений", "Allow protected message forwarding"), enabled: true))\n' +
+        '    entries.append(.notice(id: id.count, section: .yepProtectedContent, text: yepGramText(lang, "Разрешает пересылать, копировать текст и сохранять медиа из защищённых чатов.", "Allows forwarding, copying text, and saving media from copy-protected chats.")))\n' +
+        '    entries.append(.toggle(id: id.count, section: .yepProtectedContent, settingName: .yepKeepDisappearingMedia, value: YepGramSettings.keepDisappearingMedia, text: yepGramText(lang, "Сохранять исчезающие фото и видео", "Save disappearing media"), enabled: true))\n' +
+        '    entries.append(.notice(id: id.count, section: .yepProtectedContent, text: yepGramText(lang, "Одноразовые медиа не удаляются после просмотра и остаются доступны.", "View-once media will not be deleted after viewing and remain accessible.")))\n')
     toggle = ('        case .yepGhostReadAfterAction:\n'
               '            YepGramSettings.setGhost(.readAfterAction, accountId: yepGramTargetAccountId, value)\n'
               '            simplePromise.set(true)\n')
@@ -989,6 +1006,15 @@ def accounts_screen(root):
         '            simplePromise.set(true)\n'
         '        case .yepQuickAccountSwipe:\n'
         '            YepGramSettings.quickAccountSwipe = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepAllowProtectedScreenshots:\n'
+        '            YepGramSettings.allowProtectedScreenshots = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepAllowProtectedForwarding:\n'
+        '            YepGramSettings.allowProtectedForwarding = value\n'
+        '            simplePromise.set(true)\n'
+        '        case .yepKeepDisappearingMedia:\n'
+        '            YepGramSettings.keepDisappearingMedia = value\n'
         '            simplePromise.set(true)\n')
     replace(root, path,
         '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n',
@@ -1405,15 +1431,21 @@ def content_access_and_screenshot_bypass(root):
     uikit_utils = 'submodules/UIKitRuntimeUtils/Source/UIKitRuntimeUtils/UIKitUtils.m'
     replace(root, uikit_utils,
         'void setLayerDisableScreenshots(CALayer * _Nonnull layer, bool disableScreenshots) {\n    static UITextField *textField = nil;',
-        'void setLayerDisableScreenshots(CALayer * _Nonnull layer, bool disableScreenshots) {\n    if ([[NSUserDefaults standardUserDefaults] boolForKey:@"allowProtectedChannelScreenshots"]) {\n        disableScreenshots = false;\n    }\n    static UITextField *textField = nil;')
+        'void setLayerDisableScreenshots(CALayer * _Nonnull layer, bool disableScreenshots) {\n    id settingVal = [[NSUserDefaults standardUserDefaults] objectForKey:@"yepgram.allowProtectedScreenshots"];\n    BOOL allowScreenshots = settingVal != nil ? [settingVal boolValue] : YES;\n    if (allowScreenshots) {\n        disableScreenshots = false;\n    }\n    static UITextField *textField = nil;')
 
     # 2. MediaPlayerNode video capture bypass
     media_player = 'submodules/MediaPlayer/Sources/MediaPlayerNode.swift'
     replace(root, media_player,
         '                    if #available(iOS 13.0, *) {\n                        videoLayer.preventsCapture = captureProtected\n                    }',
-        '                    if #available(iOS 13.0, *) {\n                        let bypassProtectedScreenshots = UserDefaults.standard.bool(forKey: "allowProtectedChannelScreenshots")\n                        videoLayer.preventsCapture = bypassProtectedScreenshots ? false : captureProtected\n                    }')
+        '                    if #available(iOS 13.0, *) {\n                        let bypass = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedScreenshots") as? Bool) ?? true\n                        videoLayer.preventsCapture = bypass ? false : captureProtected\n                    }')
 
-    # 3. EnqueueMessage forwarding protection bypass (clone copy instead of server forwardMessages)
+    # 3. ChatControllerNode historyNodeContainer and titleAccessoryPanelContainer screenshot bypass
+    chat_node = 'submodules/TelegramUI/Sources/ChatControllerNode.swift'
+    replace(root, chat_node,
+        '        let isSecret = (!bypassCopyProtection && self.chatPresentationInterfaceState.copyProtectionEnabled) || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true',
+        '        let allowScreenshots = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedScreenshots") as? Bool) ?? true\n        let isSecret = !allowScreenshots && ((!bypassCopyProtection && self.chatPresentationInterfaceState.copyProtectionEnabled) || self.chatLocation.peerId?.namespace == Namespaces.Peer.SecretChat || self.chatLocation.peerId?.isVerificationCodes == true)')
+
+    # 4. EnqueueMessage forwarding protection bypass (clone copy instead of server forwardMessages)
     enqueue_msg = 'submodules/TelegramCore/Sources/PendingMessages/EnqueueMessage.swift'
     reupload_old = ('private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId) -> Message? {\n'
                     '    if let message = transaction.getMessage(id) {\n'
@@ -1429,7 +1461,7 @@ def content_access_and_screenshot_bypass(root):
     reupload_new = ('private func forwardedMessageToBeReuploaded(transaction: Transaction, id: MessageId) -> Message? {\n'
                     '    if let message = transaction.getMessage(id) {\n'
                     '        let isProtected = message.isCopyProtected() || (transaction.getPeer(message.id.peerId)?.isCopyProtectionEnabled == true)\n'
-                    '        let bypassProtectedForwarding = UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n'
+                    '        let bypassProtectedForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n'
                     '        if message.id.namespace != Namespaces.Message.Cloud && !Namespaces.Message.allEphemeral.contains(message.id.namespace) {\n'
                     '            return message\n'
                     '        } else if bypassProtectedForwarding && isProtected {\n'
@@ -1459,45 +1491,65 @@ def content_access_and_screenshot_bypass(root):
                            '                            mediaReference = .standalone(media: media)\n'
                            '                        }\n'
                            '                    } else if let media = sourceMessage.media.first {\n'
-                           '                        mediaReference = .message(message: MessageReference(sourceMessage), media: media)\n'
+                           '                        mediaReference = .standalone(media: media)\n'
                            '                    }')
     replace(root, enqueue_msg, forward_handler_old, forward_handler_new)
 
-    # 4. PendingMessageManager forcedReupload on restricted RPC errors
+    # 5. PendingMessageManager retry on MEDIA_RESTRICTED and CHAT_FORWARDS_RESTRICTED
     pending_mgr = 'submodules/TelegramCore/Sources/State/PendingMessageManager.swift'
     replace(root, pending_mgr,
         'if error.errorDescription.hasPrefix("FILEREF_INVALID") || error.errorDescription.hasPrefix("FILE_REFERENCE_") {',
         'if error.errorDescription.hasPrefix("FILEREF_INVALID") || error.errorDescription.hasPrefix("FILE_REFERENCE_") || error.errorDescription.hasPrefix("MEDIA_RESTRICTED") || error.errorDescription.hasPrefix("CHAT_FORWARDS_RESTRICTED") {')
 
-    # 5. ChatInterfaceStateContextMenus unlock copy & media saving
+    # 6. ChatInterfaceStateContextMenus unlock copy, forward, and save actions
     context_menus = 'submodules/TelegramUI/Sources/ChatInterfaceStateContextMenus.swift'
     replace(root, context_menus,
         '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n    let replacementMessage = message.activeEphemeralReplacementMessage',
-        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n    let replacementMessage = message.activeEphemeralReplacementMessage')
+        '    let presentationData = context.sharedContext.currentPresentationData.with { $0 }\n    let bypassForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n    let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !bypassForwarding\n    let replacementMessage = message.activeEphemeralReplacementMessage')
 
     replace(root, context_menus,
         '        let isCopyProtected = chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {',
-        '        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {')
+        '        let bypassForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n        let isCopyProtected = (chatPresentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !bypassForwarding\n        if !messageText.isEmpty || richMessageMarkdown != nil || (resourceAvailable && isImage) || diceEmoji != nil {')
 
     replace(root, context_menus,
         '            if chatPresentationInterfaceState.copyProtectionEnabled {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy',
-        '            if chatPresentationInterfaceState.copyProtectionEnabled && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding") {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
+        '            let bypassForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n            if chatPresentationInterfaceState.copyProtectionEnabled && !bypassForwarding {\n            } else {\n                actions.append(.action(ContextMenuActionItem(text: chatPresentationInterfaceState.strings.Conversation_ContextMenuCopy')
 
-    # 6. ChatMessageTextBubbleContentNode text selection copy
+    # Allow forward in chatAvailableMessageActionsImpl
+    actions_impl_old = 'func chatAvailableMessageActionsImpl(engine: TelegramEngine, accountPeerId: EnginePeer.Id, messageIds: Set<EngineMessage.Id>, messages: [EngineMessage.Id: EngineRawMessage] = [:], peers: [EnginePeer.Id: EngineRawPeer] = [:], keepUpdated: Bool) -> Signal<ChatAvailableMessageActions, NoError> {\n'
+    actions_impl_new = actions_impl_old + '    let allowProtectedMessageForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n'
+    replace(root, context_menus, actions_impl_old, actions_impl_new)
+
+    # 7. ChatMessageTextBubbleContentNode text selection copy
     text_bubble = 'submodules/TelegramUI/Components/Chat/ChatMessageTextBubbleContentNode/Sources/ChatMessageTextBubbleContentNode.swift'
     replace(root, text_bubble,
         '                let enableCopy = (!item.associatedData.isCopyProtectionEnabled && !item.message.isCopyProtected()) || item.message.id.peerId.isVerificationCodes\n                textSelectionNode.enableCopy = enableCopy',
-        '                let bypassProtectedForwarding = UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")\n                let enableCopy = (!item.associatedData.isCopyProtectionEnabled && !item.message.isCopyProtected()) || item.message.id.peerId.isVerificationCodes || bypassProtectedForwarding\n                textSelectionNode.enableCopy = enableCopy')
+        '                let bypassProtectedForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n                let enableCopy = (!item.associatedData.isCopyProtectionEnabled && !item.message.isCopyProtected()) || item.message.id.peerId.isVerificationCodes || bypassProtectedForwarding\n                textSelectionNode.enableCopy = enableCopy')
 
-    # 7. ChatController gallery and quote swipe
+    # 8. ChatController gallery and quote swipe
     chat_ctrl = 'submodules/TelegramUI/Sources/ChatController.swift'
     replace(root, chat_ctrl,
         '                standalone: standalone,\n                copyProtected: self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled,\n                reverseMessageGalleryOrder: false,',
-        '                standalone: standalone,\n                copyProtected: (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled) && !(UserDefaults.standard.bool(forKey: "allowProtectedChannelScreenshots") || UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding")),\n                reverseMessageGalleryOrder: false,')
+        '                standalone: standalone,\n                copyProtected: (self.presentationInterfaceState.copyProtectionEnabled || self.presentationInterfaceState.myCopyProtectionEnabled) && !((UserDefaults.standard.object(forKey: "yepgram.allowProtectedScreenshots") as? Bool ?? true) || (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool ?? true)),\n                reverseMessageGalleryOrder: false,')
 
     replace(root, chat_ctrl,
         '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) {\n                    return .none\n                }',
-        '                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !UserDefaults.standard.bool(forKey: "allowProtectedMessageForwarding") {\n                    return .none\n                }')
+        '                let bypassForwarding = (UserDefaults.standard.object(forKey: "yepgram.allowProtectedForwarding") as? Bool) ?? true\n                if !canSendMessagesToChat(strongSelf.presentationInterfaceState) && (strongSelf.presentationInterfaceState.copyProtectionEnabled || message.isCopyProtected()) && !bypassForwarding {\n                    return .none\n                }')
+
+    # 9. ManagedAutoremoveMessageOperations: keep disappearing / view-once media
+    autoremove_path = 'submodules/TelegramCore/Sources/State/ManagedAutoremoveMessageOperations.swift'
+    autoremove_old = ('                    if let message = transaction.getMessage(entry.messageId) {\n'
+                      '                        if message.id.peerId.namespace == Namespaces.Peer.SecretChat || isRemove {\n'
+                      '                            _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [entry.messageId])\n'
+                      '                        } else {\n'
+                      '                            transaction.updateMessage(message.id, update: { currentMessage in')
+    autoremove_new = ('                    if let message = transaction.getMessage(entry.messageId) {\n'
+                      '                        let keepMedia = (UserDefaults.standard.object(forKey: "yepgram.keepDisappearingMedia") as? Bool) ?? true\n'
+                      '                        if (message.id.peerId.namespace == Namespaces.Peer.SecretChat || isRemove) && !keepMedia {\n'
+                      '                            _internal_deleteMessages(transaction: transaction, mediaBox: postbox.mediaBox, ids: [entry.messageId])\n'
+                      '                        } else if !keepMedia {\n'
+                      '                            transaction.updateMessage(message.id, update: { currentMessage in')
+    replace(root, autoremove_path, autoremove_old, autoremove_new)
 
 
 def main():

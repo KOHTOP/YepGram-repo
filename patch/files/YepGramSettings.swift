@@ -7,6 +7,9 @@ public enum YepGramSettings {
         case ghostHideOnline = "yepgram.ghost.hideOnline"
         case ghostNoTyping = "yepgram.ghost.noTyping"
         case keepDeletedMessages = "yepgram.keepDeletedMessages"
+        case allowProtectedScreenshots = "yepgram.allowProtectedScreenshots"
+        case allowProtectedForwarding = "yepgram.allowProtectedForwarding"
+        case keepDisappearingMedia = "yepgram.keepDisappearingMedia"
     }
 
     private static func read(_ key: Key, default defaultValue: Bool) -> Bool {
@@ -39,6 +42,24 @@ public enum YepGramSettings {
     public static var keepDeletedMessages: Bool {
         get { return YepGramSettings.read(.keepDeletedMessages, default: true) }
         set { YepGramSettings.store(.keepDeletedMessages, newValue) }
+    }
+
+    /// Allow taking screenshots in copy-protected channels, groups and secret chats.
+    public static var allowProtectedScreenshots: Bool {
+        get { return YepGramSettings.read(.allowProtectedScreenshots, default: true) }
+        set { YepGramSettings.store(.allowProtectedScreenshots, newValue) }
+    }
+
+    /// Allow forwarding, copying and saving media from copy-protected chats.
+    public static var allowProtectedForwarding: Bool {
+        get { return YepGramSettings.read(.allowProtectedForwarding, default: true) }
+        set { YepGramSettings.store(.allowProtectedForwarding, newValue) }
+    }
+
+    /// Keep expiring / disappearing media (view-once photos and videos) instead of deleting them.
+    public static var keepDisappearingMedia: Bool {
+        get { return YepGramSettings.read(.keepDisappearingMedia, default: true) }
+        set { YepGramSettings.store(.keepDisappearingMedia, newValue) }
     }
 
     /// With ghost mode on, replying, reacting or voting in a chat marks it read, so the sender doesn't see
