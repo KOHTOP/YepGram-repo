@@ -616,15 +616,6 @@ private func SGControllerEntries(presentationData: PresentationData, callListSet
         '            simplePromise.set(true)\n'
         '        case .yepAccountInAppNotifications:\n'
         '            YepGramSettings.setInAppNotificationsMuted(!value, accountId: context.account.peerId.id._internalGetInt64Value())\n'
-        '            simplePromise.set(true)\n'
-        '        case .yepAllowProtectedScreenshots:\n'
-        '            YepGramSettings.allowProtectedScreenshots = value\n'
-        '            simplePromise.set(true)\n'
-        '        case .yepAllowProtectedForwarding:\n'
-        '            YepGramSettings.allowProtectedForwarding = value\n'
-        '            simplePromise.set(true)\n'
-        '        case .yepKeepDisappearingMedia:\n'
-        '            YepGramSettings.keepDisappearingMedia = value\n'
         '            simplePromise.set(true)\n')
 
     links = ('            case .languageSettings:\n'
